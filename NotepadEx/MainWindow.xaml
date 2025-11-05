@@ -134,7 +134,6 @@
                                             </Setter.Value>
                                         </Setter>
                                         <Style.Triggers>
-                                            <!-- The name "ASP/XHTML" is just the first one alphabetically. This trigger will correctly target the first item after "None". -->
                                             <DataTrigger Binding="{Binding Name}" Value="ASP/XHTML">
                                                 <Setter Property="Template">
                                                     <Setter.Value>
@@ -142,14 +141,12 @@
                                                             <StackPanel>
                                                                 <Separator Margin="0,0,0,5" />
                                                                 <Border x:Name="templateRoot" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" SnapsToDevicePixels="true" Height="22">
-                                                                    <!-- THIS MARGIN IS THE FIX: It simulates the indentation from the default template's icon column. -->
                                                                     <Grid>
                                                                         <ContentPresenter ContentSource="Header" Margin="30,0,0,0" VerticalAlignment="Center" RecognizesAccessKey="True" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
                                                                     </Grid>
                                                                 </Border>
                                                             </StackPanel>
                                                             <ControlTemplate.Triggers>
-                                                                <!-- We must re-implement the highlight trigger because we replaced the template. -->
                                                                 <Trigger Property="IsHighlighted" Value="True">
                                                                     <Setter TargetName="templateRoot" Property="Background" Value="{DynamicResource Color_MenuItemHighlightBg}"/>
                                                                     <Setter TargetName="templateRoot" Property="BorderBrush" Value="{DynamicResource Color_MenuItemHighlightBorder}"/>
@@ -158,6 +155,9 @@
                                                         </ControlTemplate>
                                                     </Setter.Value>
                                                 </Setter>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Name}" Value="XML">
+                                                <Setter Property="Header" Value="XML / XAML" />
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -197,14 +197,15 @@
                         </MenuItem>
                     </Menu>
 
-                    <Grid Grid.Row="1" Background="{DynamicResource Color_TextEditorBg}">
+                    <Grid Grid.Row="1">
                         <avalonedit:TextEditor
                             Name="textEditor"
                             FontFamily="{DynamicResource Font_Family}"
                             FontSize="{DynamicResource Font_Size}"
                             FontStyle="{DynamicResource Font_Style}"
                             FontWeight="{DynamicResource Font_Weight}"
-                            Background="Transparent"
+                            
+                            Background="{DynamicResource Color_TextEditorBg}"
                             Foreground="{DynamicResource Color_TextEditorFg}"
                             
                             SyntaxHighlighting="{Binding CurrentSyntaxHighlighting}"
@@ -214,9 +215,22 @@
                             WordWrap="{Binding IsWordWrapEnabled}"
                             ScrollViewer.HorizontalScrollBarVisibility="Auto"
                             ScrollViewer.VerticalScrollBarVisibility="Auto">
+
+                            <avalonedit:TextEditor.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Command="ApplicationCommands.Cut" Header="Cut"/>
+                                    <MenuItem Command="ApplicationCommands.Copy" Header="Copy"/>
+                                    <MenuItem Command="ApplicationCommands.Paste" Header="Paste"/>
+                                    <Separator/>
+                                    <MenuItem Command="ApplicationCommands.Undo" Header="Undo"/>
+                                    <MenuItem Command="ApplicationCommands.Redo" Header="Redo"/>
+                                </ContextMenu>
+                            </avalonedit:TextEditor.ContextMenu>
+
                             <b:Interaction.Behaviors>
                                 <behaviors:AvalonEditBehavior DocumentText="{Binding DocumentContent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                             </b:Interaction.Behaviors>
+
                         </avalonedit:TextEditor>
                     </Grid>
 

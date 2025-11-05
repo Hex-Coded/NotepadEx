@@ -6,6 +6,7 @@ namespace NotepadEx.Services.Interfaces;
 
 public interface IThemeService
 {
+    event EventHandler ThemeChanged;
     ColorTheme CurrentTheme { get; }
     string CurrentThemeName { get; }
     ObservableCollection<ThemeInfo> AvailableThemes { get; }

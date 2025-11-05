@@ -203,8 +203,23 @@ namespace NotepadEx.MVVM.ViewModels
             {
                 if(Settings.Default.ThemeName == value) return;
                 Settings.Default.ThemeName = value;
-                OnPropertyChanged();
+                OnPropertyChanged(); // This will now be called correctly.
             }
+        }
+
+        private void OnThemeChange(ThemeInfo theme)
+        {
+            if(theme == null) return;
+
+            // ** THIS IS THE FIX **
+            // 1. Set the ViewModel's property FIRST. This triggers OnPropertyChanged and updates the UI (the checkmark).
+            CurrentThemeName = theme.Name;
+
+            // 2. THEN, tell the service to apply the visual changes.
+            themeService.ApplyTheme(theme.Name);
+
+            // 3. Update the theme editor window if it's open.
+            themeService.AddEditableColorLinesToWindow();
         }
 
         public string DocumentContent
@@ -276,14 +291,6 @@ namespace NotepadEx.MVVM.ViewModels
             findAndReplaceWindow ??= new FindAndReplaceWindow(textEditor);
             findAndReplaceWindow.Show();
             findAndReplaceWindow.Activate();
-        }
-
-        private void OnThemeChange(ThemeInfo theme)
-        {
-            if(theme == null) return;
-            themeService.ApplyTheme(theme.Name);
-            CurrentThemeName = theme.Name;
-            themeService.AddEditableColorLinesToWindow();
         }
 
         private async Task OpenDocument()

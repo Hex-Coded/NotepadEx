@@ -17,6 +17,7 @@ namespace NotepadEx.Services
 {
     public class ThemeService : IThemeService
     {
+        public event EventHandler ThemeChanged;
         public ColorTheme CurrentTheme { get; private set; }
         public string CurrentThemeName { get; private set; }
         public ObservableCollection<ThemeInfo> AvailableThemes { get; private set; }
@@ -33,20 +34,17 @@ namespace NotepadEx.Services
 
         public void LoadCurrentTheme()
         {
-            var themeFiles = new DirectoryInfo(DirectoryUtil.NotepadExThemesPath).GetFiles().OrderByDescending(f => f.LastWriteTime);
-            var themeFile = themeFiles.FirstOrDefault(t => t.Name == Settings.Default.ThemeName);
-            ApplyTheme(themeFile?.Name ?? null);
+            // This method reads the saved theme name from settings and tells ApplyTheme to load it.
+            ApplyTheme(Settings.Default.ThemeName);
         }
 
         public void ApplyTheme(string themeName)
         {
-            // Use the mutex to prevent multiple processes from reading theme/settings files at once.
             ProcessSync.RunSynchronized(() =>
             {
                 try
                 {
                     ColorTheme theme;
-
                     if(themeName != null && File.Exists(Path.Combine(DirectoryUtil.NotepadExThemesPath, themeName)))
                     {
                         var fileData = File.ReadAllText(Path.Combine(DirectoryUtil.NotepadExThemesPath, themeName));
@@ -55,13 +53,13 @@ namespace NotepadEx.Services
                     }
                     else
                     {
+                        // If no theme is found or specified, create a default/empty one.
                         theme = new ColorTheme();
                     }
 
-                    Settings.Default.ThemeName = themeName;
-                    Settings.Default.Save(); // Also a critical section
+                    // The service's main job is to manage the theme object and apply the brushes.
+                    // It no longer manages the name or saves the setting.
                     CurrentTheme = theme;
-                    CurrentThemeName = themeName;
 
                     ApplyThemeObject(theme.themeObj_TextEditorBg, UIConstants.Color_TextEditorBg);
                     ApplyThemeObject(theme.themeObj_TextEditorFg, UIConstants.Color_TextEditorFg);
@@ -92,10 +90,12 @@ namespace NotepadEx.Services
                 }
                 catch(Exception ex)
                 {
-                    // Don't show a message box for every single process that fails.
-                    // This can get annoying when opening 10 files.
-                    // Instead, we can log to debug console.
                     System.Diagnostics.Debug.WriteLine($"Error Loading Theme ({themeName}): {ex.Message}");
+                }
+                finally
+                {
+                    // Notify any subscribers (like MainWindow for AvalonEdit) that the theme has changed.
+                    ThemeChanged?.Invoke(this, EventArgs.Empty);
                 }
             });
         }

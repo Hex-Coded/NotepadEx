@@ -105,68 +105,68 @@
                         <MenuItem Header="Preferences" Foreground="{DynamicResource Color_MenuItemFg}">
                             <MenuItem Header="Font Editor..." Command="{Binding OpenFontEditorCommand}" Foreground="{DynamicResource Color_MenuItemFg}"/>
                             <Separator/>
-                            <MenuItem Header="Toggle Word Wrapping" 
-                                      IsChecked="{Binding IsWordWrapEnabled, Mode=TwoWay}"
+                            <MenuItem Header="Toggle Word Wrapping"
+                                      Command="{Binding ToggleWordWrapCommand}"
+                                IsChecked="{Binding IsWordWrapEnabled}"
                                       Foreground="{DynamicResource Color_MenuItemFg}"/>
-                            <MenuItem Header="Show Line Numbers"
+                                <MenuItem Header="Show Line Numbers"
                                       IsCheckable="True"
                                       IsChecked="{Binding ShowLineNumbers, Mode=TwoWay}"
                                       Foreground="{DynamicResource Color_MenuItemFg}"/>
-                            <MenuItem Header="Show Info Bar" 
-                                      IsChecked="{Binding IsInfoBarVisible, Mode=TwoWay}"
+                                <MenuItem Header="Show Info Bar"
+                                      Command="{Binding ToggleInfoBarCommand}"
+                                    IsChecked="{Binding IsInfoBarVisible}"
                                       Foreground="{DynamicResource Color_MenuItemFg}"/>
-                            <Separator/>
-                            <MenuItem Header="Syntax Highlighting" ItemsSource="{Binding AvailableSyntaxHighlightings}" Foreground="{DynamicResource Color_MenuItemFg}">
-                                <MenuItem.ItemTemplate>
-                                    <DataTemplate>
-                                        <MenuItem Header="{Binding Name}"
+                                    <Separator/>
+                                    <MenuItem Header="Syntax Highlighting" ItemsSource="{Binding AvailableSyntaxHighlightings}" Foreground="{DynamicResource Color_MenuItemFg}">
+                                        <MenuItem.ItemTemplate>
+                                            <DataTemplate>
+                                                <MenuItem Header="{Binding Name}"
                                                   Command="{Binding DataContext.ChangeSyntaxHighlightingCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                   CommandParameter="{Binding}"
                                                   Foreground="{DynamicResource Color_MenuItemFg}">
-                                            <MenuItem.IsChecked>
-                                                <!-- THIS IS THE FIX: Set the Mode on the MultiBinding itself -->
-                                                <MultiBinding Converter="{StaticResource StringEqualityMultiConverter}" Mode="OneWay">
-                                                    <Binding Path="Name"/>
-                                                    <Binding Path="DataContext.CurrentSyntaxHighlighting.Name" RelativeSource="{RelativeSource AncestorType=Window}"/>
-                                                </MultiBinding>
-                                            </MenuItem.IsChecked>
-                                        </MenuItem>
-                                    </DataTemplate>
-                                </MenuItem.ItemTemplate>
-                            </MenuItem>
-                        </MenuItem>
+                                                    <MenuItem.IsChecked>
+                                                        <MultiBinding Converter="{StaticResource StringEqualityMultiConverter}" Mode="OneWay">
+                                                            <Binding Path="Name"/>
+                                                            <Binding Path="DataContext.CurrentSyntaxHighlighting.Name" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                                        </MultiBinding>
+                                                    </MenuItem.IsChecked>
+                                                </MenuItem>
+                                            </DataTemplate>
+                                        </MenuItem.ItemTemplate>
+                                    </MenuItem>
+                                </MenuItem>
 
-                        <MenuItem Header="Theme" Foreground="{DynamicResource Color_MenuItemFg}">
-                            <MenuItem.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Vertical"/>
-                                </ItemsPanelTemplate>
-                            </MenuItem.ItemsPanel>
+                                <MenuItem Header="Theme" Foreground="{DynamicResource Color_MenuItemFg}">
+                                    <MenuItem.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Vertical"/>
+                                        </ItemsPanelTemplate>
+                                    </MenuItem.ItemsPanel>
 
-                            <MenuItem Header="Theme Editor..." Command="{Binding OpenThemeEditorCommand}" Foreground="{DynamicResource Color_MenuItemFg}"/>
-                            <Separator/>
-                            <MenuItem Header="Themes" ItemsSource="{Binding AvailableThemes}">
-                                <MenuItem.ItemTemplate>
-                                    <DataTemplate>
-                                        <MenuItem Header="{Binding Name}"
+                                    <MenuItem Header="Theme Editor..." Command="{Binding OpenThemeEditorCommand}" Foreground="{DynamicResource Color_MenuItemFg}"/>
+                                    <Separator/>
+                                    <MenuItem Header="Themes" ItemsSource="{Binding AvailableThemes}">
+                                        <MenuItem.ItemTemplate>
+                                            <DataTemplate>
+                                                <MenuItem Header="{Binding Name}"
                                                   Command="{Binding DataContext.ChangeThemeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                   CommandParameter="{Binding}"
                                                   Foreground="{DynamicResource Color_MenuItemFg}">
-                                            <MenuItem.IsChecked>
-                                                <!-- Applied the same fix here for consistency -->
-                                                <MultiBinding Converter="{StaticResource StringEqualityMultiConverter}" Mode="OneWay">
-                                                    <Binding Path="Name"/>
-                                                    <Binding Path="DataContext.CurrentThemeName" RelativeSource="{RelativeSource AncestorType=Window}"/>
-                                                </MultiBinding>
-                                            </MenuItem.IsChecked>
-                                        </MenuItem>
-                                    </DataTemplate>
-                                </MenuItem.ItemTemplate>
-                            </MenuItem>
-                        </MenuItem>
-                        <MenuItem Header="About" Foreground="{DynamicResource Color_MenuItemFg}">
-                            <MenuItem Header="Github.com/BitSwapper" Foreground="{DynamicResource Color_MenuItemFg}"/>
-                        </MenuItem>
+                                                    <MenuItem.IsChecked>
+                                                        <MultiBinding Converter="{StaticResource StringEqualityMultiConverter}" Mode="OneWay">
+                                                            <Binding Path="Name"/>
+                                                            <Binding Path="DataContext.CurrentThemeName" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                                        </MultiBinding>
+                                                    </MenuItem.IsChecked>
+                                                </MenuItem>
+                                            </DataTemplate>
+                                        </MenuItem.ItemTemplate>
+                                    </MenuItem>
+                                </MenuItem>
+                                <MenuItem Header="About" Foreground="{DynamicResource Color_MenuItemFg}">
+                                    <MenuItem Header="Github.com/BitSwapper" Foreground="{DynamicResource Color_MenuItemFg}"/>
+                                </MenuItem>
                     </Menu>
 
                     <Grid Grid.Row="1" Background="{DynamicResource Color_TextEditorBg}">

@@ -2,6 +2,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -74,18 +75,15 @@ namespace NotepadEx.MVVM.ViewModels
             document = new Document();
             this.textEditor.TextArea.Caret.PositionChanged += Caret_PositionChanged;
 
-            // Populate syntax highlighting options
             AvailableSyntaxHighlightings = new ObservableCollection<IHighlightingDefinition>(HighlightingManager.Instance.HighlightingDefinitions);
 
             InitializeCommands();
             UpdateMenuBarVisibility(Settings.Default.MenuBarAutoHide);
 
-            // Load settings
             IsInfoBarVisible = Settings.Default.InfoBarVisible;
             IsWordWrapEnabled = Settings.Default.TextWrapping;
             ShowLineNumbers = Settings.Default.ShowLineNumbers;
             CurrentSyntaxHighlighting = HighlightingManager.Instance.GetDefinition(Settings.Default.SyntaxHighlightingName) ?? HighlightingManager.Instance.GetDefinition("C#");
-
 
             this.themeService.LoadCurrentTheme();
             LoadRecentFiles();
@@ -121,7 +119,31 @@ namespace NotepadEx.MVVM.ViewModels
             ChangeSyntaxHighlightingCommand = new RelayCommand<IHighlightingDefinition>(def => CurrentSyntaxHighlighting = def);
         }
 
-        public string DocumentContent { get => document.Content; set { /*...*/ } }
+        public string CurrentThemeName
+        {
+            get => Settings.Default.ThemeName;
+            set
+            {
+                if(Settings.Default.ThemeName == value) return;
+                Settings.Default.ThemeName = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public string DocumentContent
+        {
+            get => document.Content;
+            set
+            {
+                if(document.Content == value) return;
+                document.Content = value;
+                document.IsModified = true;
+                OnPropertyChanged();
+                UpdateTitle();
+                UpdateStatusBar();
+            }
+        }
+
         public string StatusText { get => statusText; set => SetProperty(ref statusText, value); }
         public double MenuBarHeight { get => menuBarHeight; set => SetProperty(ref menuBarHeight, value); }
         public double InfoBarHeight { get => infoBarHeight; set => SetProperty(ref infoBarHeight, value); }
@@ -158,25 +180,6 @@ namespace NotepadEx.MVVM.ViewModels
             set => SetProperty(ref currentSyntaxHighlighting, value);
         }
 
-        // ... other methods like OpenDocument, SaveDocument, etc. remain the same ...
-
-        public void Cleanup()
-        {
-            // The SaveSettings delegate will now handle persisting the new properties
-            SaveSettings?.Invoke();
-        }
-
-        public string CurrentThemeName
-        {
-            get => Settings.Default.ThemeName;
-            set
-            {
-                if(Settings.Default.ThemeName == value) return;
-                Settings.Default.ThemeName = value;
-                OnPropertyChanged();
-            }
-        }
-
         private void LoadRecentFiles()
         {
             RecentFileManager.LoadRecentFilesFromSettings();
@@ -186,6 +189,7 @@ namespace NotepadEx.MVVM.ViewModels
         private void AddRecentFile(string filePath) => RecentFileManager.AddRecentFile(filePath, menuItemFileDropdown, SaveSettings);
 
         private void OnOpenThemeEditor() => themeService.OpenThemeEditor();
+
         private void OnOpenFontEditor() => fontService.OpenFontEditor();
 
         private void OnOpenFindReplaceEditor()
@@ -239,6 +243,7 @@ namespace NotepadEx.MVVM.ViewModels
         }
 
         private void ToggleWordWrap() => IsWordWrapEnabled = !IsWordWrapEnabled;
+
         private void ToggleInfoBar() => IsInfoBarVisible = !IsInfoBarVisible;
 
         private void UpdateMenuBarVisibility(bool autoHide)
@@ -286,7 +291,7 @@ namespace NotepadEx.MVVM.ViewModels
             {
                 document.Content = textEditor.Document.Text;
                 await documentService.SaveDocumentAsync(document);
-                document.IsModified = false; // Manually set after saving.
+                document.IsModified = false;
                 UpdateTitle();
                 UpdateStatusBar();
             }
@@ -311,7 +316,10 @@ namespace NotepadEx.MVVM.ViewModels
         private void UpdateStatusBar()
         {
             var caret = textEditor.TextArea.Caret;
-            StatusText = $"Ln {caret.Line}, Col {caret.Column} | Characters: {textEditor.Document.TextLength}";
+            var totalChars = textEditor.Document.TextLength;
+            var totalLines = textEditor.Document.LineCount;
+
+            StatusText = $"Ln {caret.Line}, Col {caret.Column}   |   Characters: {totalChars}   |   Lines: {totalLines}";
         }
 
         public void HandleMouseMovement(double mouseY)
@@ -348,6 +356,7 @@ namespace NotepadEx.MVVM.ViewModels
                 DocumentContent = document.Content;
                 document.IsModified = false;
                 UpdateTitle();
+                UpdateStatusBar();
                 AddRecentFile(filePath);
             }
             catch(Exception ex)
@@ -359,13 +368,13 @@ namespace NotepadEx.MVVM.ViewModels
         private void NewDocument()
         {
             if(!PromptToSaveChanges()) return;
-
             document.Content = string.Empty;
             document.FilePath = string.Empty;
             document.IsModified = false;
             DocumentContent = string.Empty;
             document.IsModified = false;
             UpdateTitle();
+            UpdateStatusBar();
         }
 
         private void OpenFileLocation()
@@ -379,6 +388,11 @@ namespace NotepadEx.MVVM.ViewModels
         {
             if(e.OriginalSource is MenuItem menuItem && menuItem.Header is string path && path != "...")
                 await OpenRecentFile(path);
+        }
+
+        public void Cleanup()
+        {
+            SaveSettings?.Invoke();
         }
     }
 }

@@ -77,7 +77,17 @@ namespace NotepadEx.MVVM.ViewModels
             document = new Document();
             this.textEditor.TextArea.Caret.PositionChanged += Caret_PositionChanged;
 
-            AvailableSyntaxHighlightings = new ObservableCollection<IHighlightingDefinition>(HighlightingManager.Instance.HighlightingDefinitions);
+            // ** THIS IS THE FIX **
+            // Manually construct the syntax highlighting list with sorting and a "None" option.
+            var sortedHighlightings = HighlightingManager.Instance.HighlightingDefinitions
+                .OrderBy(h => h.Name).ToList();
+
+            // AvalonEdit uses a null definition for plain text. We create a placeholder for the menu.
+            // Using a simple custom class makes the XAML binding work cleanly.
+            var plainTextHighlighting = new PlainTextHighlightingDefinition();
+            sortedHighlightings.Insert(0, plainTextHighlighting);
+
+            AvailableSyntaxHighlightings = new ObservableCollection<IHighlightingDefinition>(sortedHighlightings);
 
             InitializeCommands();
             UpdateMenuBarVisibility(Settings.Default.MenuBarAutoHide);
@@ -85,7 +95,11 @@ namespace NotepadEx.MVVM.ViewModels
             IsInfoBarVisible = Settings.Default.InfoBarVisible;
             IsWordWrapEnabled = Settings.Default.TextWrapping;
             ShowLineNumbers = Settings.Default.ShowLineNumbers;
-            CurrentSyntaxHighlighting = HighlightingManager.Instance.GetDefinition(Settings.Default.SyntaxHighlightingName) ?? HighlightingManager.Instance.GetDefinition("C#");
+
+            // Set the default highlighting
+            var savedHighlightingName = Settings.Default.SyntaxHighlightingName;
+            CurrentSyntaxHighlighting = HighlightingManager.Instance.GetDefinition(savedHighlightingName)
+                                        ?? (savedHighlightingName == "Plain Text" ? null : HighlightingManager.Instance.GetDefinition("C#"));
 
             this.themeService.LoadCurrentTheme();
             UpdateRecentFilesMenu();
@@ -120,6 +134,67 @@ namespace NotepadEx.MVVM.ViewModels
             OpenRecentCommand = new RelayCommand<RoutedEventArgs>(HandleOpenRecent);
             ChangeSyntaxHighlightingCommand = new RelayCommand<IHighlightingDefinition>(def => CurrentSyntaxHighlighting = def);
         }
+
+
+        private async Task LoadDocument(string filePath)
+        {
+            try
+            {
+                await documentService.LoadDocumentAsync(filePath, document);
+
+                DocumentContent = document.Content;
+                document.IsModified = false;
+
+                UpdateTitle();
+                UpdateStatusBar();
+                AddRecentFile(filePath);
+            }
+            catch(Exception ex)
+            {
+                // ** THIS IS THE FIX **
+                // Check if the error was because the file is missing.
+                if(ex is FileNotFoundException || ex is DirectoryNotFoundException)
+                {
+                    windowService.ShowDialog($"The file could not be found:\n{filePath}\n\nIt will be removed from the recent files list.", "File Not Found");
+
+                    // Atomically remove the bad entry and refresh the UI.
+                    RecentFileManager.RemoveFile(filePath);
+                    UpdateRecentFilesMenu();
+                }
+                else
+                {
+                    // For any other error, show a generic message.
+                    windowService.ShowDialog($"Error loading file: {ex.Message}", "Error");
+                }
+            }
+        }
+
+        private void AddRecentFile(string filePath)
+        {
+            RecentFileManager.AddFile(filePath);
+            UpdateRecentFilesMenu();
+        }
+
+        private void UpdateRecentFilesMenu()
+        {
+            var openRecentMenuItem = (MenuItem)menuItemFileDropdown.FindName("MenuItem_OpenRecent");
+            if(openRecentMenuItem == null) return;
+
+            var recentFiles = RecentFileManager.GetRecentFiles();
+            var menuFgBrush = (Brush)Application.Current.FindResource("Color_MenuItemFg");
+
+            openRecentMenuItem.Items.Clear();
+            foreach(string file in recentFiles)
+            {
+                MenuItem menuItem = new MenuItem
+                {
+                    Header = file,
+                    Foreground = menuFgBrush
+                };
+                openRecentMenuItem.Items.Add(menuItem);
+            }
+        }
+
 
         public string CurrentThemeName
         {
@@ -178,34 +253,19 @@ namespace NotepadEx.MVVM.ViewModels
         public IHighlightingDefinition CurrentSyntaxHighlighting
         {
             get => currentSyntaxHighlighting;
-            set => SetProperty(ref currentSyntaxHighlighting, value);
-        }
-
-        private void AddRecentFile(string filePath)
-        {
-            RecentFileManager.AddFile(filePath);
-            UpdateRecentFilesMenu();
-        }
-
-        private void UpdateRecentFilesMenu()
-        {
-            var openRecentMenuItem = (MenuItem)menuItemFileDropdown.FindName("MenuItem_OpenRecent");
-            if(openRecentMenuItem == null) return;
-
-            var recentFiles = RecentFileManager.GetRecentFiles();
-            var menuFgBrush = (Brush)Application.Current.FindResource("Color_MenuItemFg");
-
-            openRecentMenuItem.Items.Clear();
-            foreach(string file in recentFiles)
+            set
             {
-                MenuItem menuItem = new MenuItem
+                if(value is PlainTextHighlightingDefinition)
                 {
-                    Header = file,
-                    Foreground = menuFgBrush
-                };
-                openRecentMenuItem.Items.Add(menuItem);
+                    SetProperty(ref currentSyntaxHighlighting, null);
+                }
+                else
+                {
+                    SetProperty(ref currentSyntaxHighlighting, value);
+                }
             }
         }
+
 
         private void OnOpenThemeEditor() => themeService.OpenThemeEditor();
 
@@ -341,26 +401,7 @@ namespace NotepadEx.MVVM.ViewModels
         private void Cut() => textEditor.Cut();
         private void Paste() => textEditor.Paste();
 
-        private async Task LoadDocument(string filePath)
-        {
-            try
-            {
-                await documentService.LoadDocumentAsync(filePath, document);
-
-                // ** FIX 3: This method now correctly controls the state after loading. **
-                DocumentContent = document.Content; // This updates the UI
-                document.IsModified = false;       // Explicitly set state to unmodified
-
-                UpdateTitle();
-                UpdateStatusBar();
-                AddRecentFile(filePath);
-            }
-            catch(Exception ex)
-            {
-                windowService.ShowDialog($"Error loading file: {ex.Message}", "Error");
-            }
-        }
-
+      
         private void NewDocument()
         {
             if(!PromptToSaveChanges()) return;

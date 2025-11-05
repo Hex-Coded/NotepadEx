@@ -27,7 +27,6 @@
 
     <Window.Resources>
         <Converters:StringEqualityMultiConverter x:Key="StringEqualityMultiConverter"/>
-        <Converters:BooleanToTextDecorationConverter x:Key="BooleanToTextDecorationConverter"/>
     </Window.Resources>
 
     <Grid>
@@ -35,7 +34,6 @@
                 BorderBrush="{DynamicResource Color_BorderColor}" 
                 CornerRadius="1" 
                 Background="Transparent">
-
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="24"/>
@@ -106,15 +104,36 @@
 
                         <MenuItem Header="Preferences" Foreground="{DynamicResource Color_MenuItemFg}">
                             <MenuItem Header="Font Editor..." Command="{Binding OpenFontEditorCommand}" Foreground="{DynamicResource Color_MenuItemFg}"/>
-
+                            <Separator/>
                             <MenuItem Header="Toggle Word Wrapping" 
-                                    Command="{Binding ToggleWordWrapCommand}"
-                                    IsChecked="{Binding IsWordWrapEnabled}"
-                                    Foreground="{DynamicResource Color_MenuItemFg}"/>
+                                      IsChecked="{Binding IsWordWrapEnabled, Mode=TwoWay}"
+                                      Foreground="{DynamicResource Color_MenuItemFg}"/>
+                            <MenuItem Header="Show Line Numbers"
+                                      IsCheckable="True"
+                                      IsChecked="{Binding ShowLineNumbers, Mode=TwoWay}"
+                                      Foreground="{DynamicResource Color_MenuItemFg}"/>
                             <MenuItem Header="Show Info Bar" 
-                                    IsChecked="{Binding IsInfoBarVisible}"
-                                    Command="{Binding ToggleInfoBarCommand}"
-                                    Foreground="{DynamicResource Color_MenuItemFg}"/>
+                                      IsChecked="{Binding IsInfoBarVisible, Mode=TwoWay}"
+                                      Foreground="{DynamicResource Color_MenuItemFg}"/>
+                            <Separator/>
+                            <MenuItem Header="Syntax Highlighting" ItemsSource="{Binding AvailableSyntaxHighlightings}" Foreground="{DynamicResource Color_MenuItemFg}">
+                                <MenuItem.ItemTemplate>
+                                    <DataTemplate>
+                                        <MenuItem Header="{Binding Name}"
+                                                  Command="{Binding DataContext.ChangeSyntaxHighlightingCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                  CommandParameter="{Binding}"
+                                                  Foreground="{DynamicResource Color_MenuItemFg}">
+                                            <MenuItem.IsChecked>
+                                                <!-- THIS IS THE FIX: Set the Mode on the MultiBinding itself -->
+                                                <MultiBinding Converter="{StaticResource StringEqualityMultiConverter}" Mode="OneWay">
+                                                    <Binding Path="Name"/>
+                                                    <Binding Path="DataContext.CurrentSyntaxHighlighting.Name" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                                </MultiBinding>
+                                            </MenuItem.IsChecked>
+                                        </MenuItem>
+                                    </DataTemplate>
+                                </MenuItem.ItemTemplate>
+                            </MenuItem>
                         </MenuItem>
 
                         <MenuItem Header="Theme" Foreground="{DynamicResource Color_MenuItemFg}">
@@ -134,7 +153,8 @@
                                                   CommandParameter="{Binding}"
                                                   Foreground="{DynamicResource Color_MenuItemFg}">
                                             <MenuItem.IsChecked>
-                                                <MultiBinding Converter="{StaticResource StringEqualityMultiConverter}">
+                                                <!-- Applied the same fix here for consistency -->
+                                                <MultiBinding Converter="{StaticResource StringEqualityMultiConverter}" Mode="OneWay">
                                                     <Binding Path="Name"/>
                                                     <Binding Path="DataContext.CurrentThemeName" RelativeSource="{RelativeSource AncestorType=Window}"/>
                                                 </MultiBinding>
@@ -158,11 +178,12 @@
                             FontWeight="{DynamicResource Font_Weight}"
                             Background="Transparent"
                             Foreground="{DynamicResource Color_TextEditorFg}"
-                            WordWrap="{Binding IsWordWrapEnabled}"
-                            SyntaxHighlighting="C#"
-                            ShowLineNumbers="True"
-                            LineNumbersForeground="{DynamicResource Color_MenuItemFg}"
                             
+                            SyntaxHighlighting="{Binding CurrentSyntaxHighlighting}"
+                            ShowLineNumbers="{Binding ShowLineNumbers}"
+                            LineNumbersForeground="{DynamicResource Color_MenuItemFg}"
+
+                            WordWrap="{Binding IsWordWrapEnabled}"
                             ScrollViewer.HorizontalScrollBarVisibility="Auto"
                             ScrollViewer.VerticalScrollBarVisibility="Auto">
                             <b:Interaction.Behaviors>

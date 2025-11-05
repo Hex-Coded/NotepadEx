@@ -1,9 +1,5 @@
 ﻿using System;
 using System.Windows;
-using System.Xml;
-using ICSharpCode.AvalonEdit;
-using ICSharpCode.AvalonEdit.Highlighting;
-using ICSharpCode.AvalonEdit.Highlighting.Xshd;
 using NotepadEx.MVVM.View.UserControls;
 using NotepadEx.MVVM.ViewModels;
 using NotepadEx.Properties;
@@ -19,9 +15,6 @@ namespace NotepadEx
         {
             InitializeComponent();
 
-            // Load the C# syntax highlighting definition from the embedded resource
-            LoadSyntaxHighlighting();
-
             var windowService = new WindowService(this);
             var documentService = new DocumentService();
             var themeService = new ThemeService(Application.Current);
@@ -36,25 +29,6 @@ namespace NotepadEx
             InitializeWindowEvents();
         }
 
-        private void LoadSyntaxHighlighting()
-        {
-            // The C# definition is an embedded resource in the AvalonEdit library.
-            var resourceName = "ICSharpCode.AvalonEdit.Highlighting.C#.xshd";
-
-            using(var stream = typeof(TextEditor).Assembly.GetManifestResourceStream(resourceName))
-            {
-                if(stream != null)
-                {
-                    using(var reader = new XmlTextReader(stream))
-                    {
-                        // This registers the highlighting definition with the HighlightingManager
-                        // and applies it to the editor instance.
-                        textEditor.SyntaxHighlighting = HighlightingLoader.Load(reader, HighlightingManager.Instance);
-                    }
-                }
-            }
-        }
-
         void InitializeWindowEvents()
         {
             StateChanged += (s, e) =>
@@ -63,6 +37,8 @@ namespace NotepadEx
                     viewModel.UpdateWindowState(WindowState);
             };
 
+            // Register the Cleanup method to be called when the window is closing
+            Closing += (s, e) => viewModel.Cleanup();
             Closed += (s, e) => viewModel.PromptToSaveChanges();
         }
 

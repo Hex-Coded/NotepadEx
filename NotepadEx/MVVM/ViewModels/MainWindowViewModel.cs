@@ -28,8 +28,8 @@ namespace NotepadEx.MVVM.ViewModels
         private readonly IDocumentService documentService;
         private readonly IThemeService themeService;
         private readonly IFontService fontService;
+        private readonly MenuItem openRecentMenuItemContainer;
         private readonly TextEditor textEditor;
-        private readonly MenuItem menuItemFileDropdown;
         private readonly Action SaveSettings;
         private FindAndReplaceWindow findAndReplaceWindow;
         private string statusText;
@@ -63,18 +63,15 @@ namespace NotepadEx.MVVM.ViewModels
         public ObservableCollection<ThemeInfo> AvailableThemes => themeService.AvailableThemes;
         public ObservableCollection<IHighlightingDefinition> AvailableSyntaxHighlightings { get; }
 
-        private readonly MenuItem openRecentMenuItemContainer;
-
         public MainWindowViewModel(IWindowService windowService, IDocumentService documentService, IThemeService themeService, IFontService fontService, MenuItem openRecentMenuItemContainer, TextEditor textEditor, Action SaveSettings)
         {
             this.windowService = windowService;
             this.documentService = documentService;
             this.themeService = themeService;
             this.fontService = fontService;
-            this.menuItemFileDropdown = menuItemFileDropdown;
+            this.openRecentMenuItemContainer = openRecentMenuItemContainer;
             this.textEditor = textEditor;
             this.SaveSettings = SaveSettings;
-            this.openRecentMenuItemContainer = openRecentMenuItemContainer;
 
             document = new Document();
             this.textEditor.TextArea.Caret.PositionChanged += Caret_PositionChanged;
@@ -102,104 +99,14 @@ namespace NotepadEx.MVVM.ViewModels
             }
             CurrentSyntaxHighlighting = AvailableSyntaxHighlightings.FirstOrDefault(h => h.Name.Equals(savedHighlightingName, StringComparison.OrdinalIgnoreCase));
 
-            // FIX: Subscribe to the ThemeChanged event to notify the UI when the theme name changes
             this.themeService.ThemeChanged += (s, e) => OnPropertyChanged(nameof(CurrentThemeName));
-
             this.themeService.LoadCurrentTheme();
             UpdateRecentFilesMenu();
             UpdateStatusBar();
             OnPropertyChanged(nameof(AvailableThemes));
         }
 
-        private async Task LoadDocument(string filePath)
-        {
-            try
-            {
-                // 1. Get the content from the service
-                string fileContent = await documentService.LoadDocumentContentAsync(filePath);
-
-                // 2. Update the document model's properties
-                document.FilePath = filePath;
-                document.IsModified = false;
-
-                // 3. Set the ViewModel's property. This will now correctly trigger OnPropertyChanged
-                //    because the internal document.Content is different from fileContent at this point.
-                DocumentContent = fileContent;
-
-                // 4. Update UI elements
-                UpdateTitle();
-                UpdateStatusBar();
-                AddRecentFile(filePath);
-            }
-            catch(Exception ex)
-            {
-                if(ex is FileNotFoundException || ex is DirectoryNotFoundException)
-                {
-                    windowService.ShowDialog($"The file could not be found:\n{filePath}\n\nIt will be removed from the recent files list.", "File Not Found");
-                    RecentFileManager.RemoveFile(filePath);
-                    UpdateRecentFilesMenu();
-                }
-                else
-                {
-                    windowService.ShowDialog($"Error loading file: {ex.Message}", "Error");
-                }
-            }
-        }
-
-        // The DocumentContent property setter is now correct and does not need to be changed.
-        public string DocumentContent
-        {
-            get => document.Content;
-            set
-            {
-                if(document.Content == value) return;
-                document.Content = value;
-                OnPropertyChanged();
-                UpdateTitle();
-            }
-        }
-
-        private void UpdateRecentFilesMenu()
-        {
-            // FIX: Remove the untestable FindName call. Use the injected container directly.
-            var openRecentMenuItem = this.openRecentMenuItemContainer;
-            if(openRecentMenuItem == null) return;
-
-            var recentFiles = RecentFileManager.GetRecentFiles();
-
-            openRecentMenuItem.Items.Clear();
-
-            if(recentFiles.Count == 0)
-            {
-                MenuItem emptyItem = new MenuItem
-                {
-                    Header = "(No recent files)",
-                    IsEnabled = false
-                };
-                openRecentMenuItem.Items.Add(emptyItem);
-            }
-            else
-            {
-                foreach(string file in recentFiles)
-                {
-                    MenuItem menuItem = new MenuItem
-                    {
-                        Header = file
-                    };
-                    string filePath = file;
-                    menuItem.Click += async (s, e) =>
-                    {
-                        await OpenRecentFile(filePath);
-                    };
-                    openRecentMenuItem.Items.Add(menuItem);
-                }
-            }
-        }
-
-        private void TextArea_TextEntered(object sender, TextCompositionEventArgs e)
-        {
-            EnsureCaretVisible();
-        }
+        private void TextArea_TextEntered(object sender, TextCompositionEventArgs e) => EnsureCaretVisible();
 
         private void Caret_PositionChanged(object sender, EventArgs e)
         {
@@ -277,14 +184,51 @@ namespace NotepadEx.MVVM.ViewModels
             UpdateRecentFilesMenu();
         }
 
+        private void UpdateRecentFilesMenu()
+        {
+            var openRecentMenuItem = this.openRecentMenuItemContainer;
+            if(openRecentMenuItem == null) return;
+            var recentFiles = RecentFileManager.GetRecentFiles();
+            openRecentMenuItem.Items.Clear();
+            if(recentFiles.Count == 0)
+            {
+                MenuItem emptyItem = new MenuItem { Header = "(No recent files)", IsEnabled = false };
+                openRecentMenuItem.Items.Add(emptyItem);
+            }
+            else
+            {
+                foreach(string file in recentFiles)
+                {
+                    MenuItem menuItem = new MenuItem { Header = file };
+                    string filePath = file;
+                    menuItem.Click += async (s, e) => { await OpenRecentFile(filePath); };
+                    openRecentMenuItem.Items.Add(menuItem);
+                }
+            }
+        }
+
         public string CurrentThemeName => themeService.CurrentThemeName;
 
         private void OnThemeChange(ThemeInfo theme)
         {
             if(theme == null) return;
-            // FIX: Simply tell the service to apply the new theme
             themeService.ApplyTheme(theme.Name);
             themeService.AddEditableColorLinesToWindow();
+        }
+
+        public string DocumentContent
+        {
+            get => document.Content;
+            set
+            {
+                if(document.Content == value) return;
+
+                document.Content = value;
+                document.IsModified = true;
+
+                OnPropertyChanged();
+                UpdateTitle();
+            }
         }
 
         public string StatusText { get => statusText; set => SetProperty(ref statusText, value); }
@@ -292,48 +236,27 @@ namespace NotepadEx.MVVM.ViewModels
         public double InfoBarHeight { get => infoBarHeight; set => SetProperty(ref infoBarHeight, value); }
         public bool IsMenuBarEnabled { get => isMenuBarEnabled; set => SetProperty(ref isMenuBarEnabled, value); }
         public CustomTitleBarViewModel TitleBarViewModel { get; set; }
-
-        public bool IsWordWrapEnabled
-        {
-            get => isWordWrapEnabled;
-            set => SetProperty(ref isWordWrapEnabled, value);
-        }
+        public bool IsWordWrapEnabled { get => isWordWrapEnabled; set => SetProperty(ref isWordWrapEnabled, value); }
 
         public bool IsInfoBarVisible
         {
             get => isInfoBarVisible;
-            set
-            {
-                if(SetProperty(ref isInfoBarVisible, value))
-                {
-                    InfoBarHeight = value ? UIConstants.InfoBarHeight : 0;
-                }
-            }
+            set { if(SetProperty(ref isInfoBarVisible, value)) { InfoBarHeight = value ? UIConstants.InfoBarHeight : 0; } }
         }
 
-        public bool ShowLineNumbers
-        {
-            get => showLineNumbers;
-            set => SetProperty(ref showLineNumbers, value);
-        }
+        public bool ShowLineNumbers { get => showLineNumbers; set => SetProperty(ref showLineNumbers, value); }
 
         public IHighlightingDefinition CurrentSyntaxHighlighting
         {
             get => currentSyntaxHighlighting;
-            set
-            {
-                var newValue = (value is PlainTextHighlightingDefinition) ? null : value;
-                if(SetProperty(ref currentSyntaxHighlighting, newValue))
-                {
-                    OnPropertyChanged(nameof(CurrentSyntaxHighlightingName));
-                }
-            }
+            set { var newValue = (value is PlainTextHighlightingDefinition) ? null : value; if(SetProperty(ref currentSyntaxHighlighting, newValue)) { OnPropertyChanged(nameof(CurrentSyntaxHighlightingName)); } }
         }
 
         public string CurrentSyntaxHighlightingName => CurrentSyntaxHighlighting?.Name ?? "None / Plain Text";
 
         private void OnOpenThemeEditor() => themeService.OpenThemeEditor();
         private void OnOpenFontEditor() => fontService.OpenFontEditor();
+
         private void OnOpenFindReplaceEditor()
         {
             findAndReplaceWindow ??= new FindAndReplaceWindow(textEditor);
@@ -381,13 +304,11 @@ namespace NotepadEx.MVVM.ViewModels
 
             if(string.IsNullOrEmpty(document.FileName))
             {
-                // Handle the case for a new, unsaved document
                 finalTitle = $"{modifiedIndicator}NotepadEx{modifiedIndicator}";
             }
             else
             {
-                // Handle the case for a previously saved document
-                finalTitle = $"{modifiedIndicator}NotepadEx  |  {document.FileName}{modifiedIndicator}";
+                finalTitle = $"{modifiedIndicator}NotepadEx   |  {document.FileName}{modifiedIndicator}";
             }
 
             if(TitleBarViewModel != null)
@@ -399,22 +320,16 @@ namespace NotepadEx.MVVM.ViewModels
         public async Task<bool> PromptToSaveChanges()
         {
             if(!document.IsModified) return true;
-
-            // FIX: Use the mockable service instead of the static MessageBox.Show
             var result = windowService.ShowSaveConfirmationDialog("You have unsaved changes. Would you like to save them before proceeding?", "Unsaved Changes");
-
             switch(result)
             {
-                case MessageBoxResult.Yes:
-                    return await SaveDocument();
-                case MessageBoxResult.No:
-                    return true;
-                case MessageBoxResult.Cancel:
-                    return false;
-                default:
-                    return true;
+                case MessageBoxResult.Yes: return await SaveDocument();
+                case MessageBoxResult.No: return true;
+                case MessageBoxResult.Cancel: return false;
+                default: return true;
             }
         }
+
         public async Task<bool> SaveDocument()
         {
             if(string.IsNullOrEmpty(document.FilePath))
@@ -451,6 +366,39 @@ namespace NotepadEx.MVVM.ViewModels
             await LoadDocument(path);
         }
 
+        private async Task LoadDocument(string filePath)
+        {
+            try
+            {
+                string fileContent = await documentService.LoadDocumentContentAsync(filePath);
+
+                document.FilePath = filePath;
+                document.IsModified = false;
+
+                // Directly set the model's content without triggering the "IsModified" logic in the property setter
+                document.Content = fileContent;
+                // Explicitly notify the UI to update the editor with the new content
+                OnPropertyChanged(nameof(DocumentContent));
+
+                UpdateTitle(); // This will now correctly see IsModified = false
+                UpdateStatusBar();
+                AddRecentFile(filePath);
+            }
+            catch(Exception ex)
+            {
+                if(ex is FileNotFoundException || ex is DirectoryNotFoundException)
+                {
+                    windowService.ShowDialog($"The file could not be found:\n{filePath}\n\nIt will be removed from the recent files list.", "File Not Found");
+                    RecentFileManager.RemoveFile(filePath);
+                    UpdateRecentFilesMenu();
+                }
+                else
+                {
+                    windowService.ShowDialog($"Error loading file: {ex.Message}", "Error");
+                }
+            }
+        }
+
         private void Copy() => textEditor.Copy();
         private void Cut() => textEditor.Cut();
         private void Paste() => textEditor.Paste();
@@ -458,9 +406,12 @@ namespace NotepadEx.MVVM.ViewModels
         private async void NewDocument()
         {
             if(!await PromptToSaveChanges()) return;
+
             document.FilePath = string.Empty;
-            DocumentContent = string.Empty;
             document.IsModified = false;
+            document.Content = string.Empty;
+            OnPropertyChanged(nameof(DocumentContent));
+
             UpdateTitle();
             UpdateStatusBar();
         }
@@ -489,9 +440,7 @@ namespace NotepadEx.MVVM.ViewModels
             if(File.Exists(path)) Process.Start("explorer.exe", $"/select,\"{path}\"");
         }
 
-        public void Cleanup()
-        {
-            SaveSettings?.Invoke();
-        }
+
+        public void Cleanup() => SaveSettings?.Invoke();
     }
 }

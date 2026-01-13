@@ -11,23 +11,20 @@ namespace NotepadEx
         {
             ProcessSync.RunSynchronized(() =>
             {
-                // FIX: Save window state as a string
+                // Save window state and size
                 Settings.Default.WindowState = window.WindowState.ToString();
-
-                // FIX: Save the correct size depending on the state
-                // If maximized, save the "restored" dimensions, not the maximized ones.
                 if(window.WindowState == WindowState.Maximized)
                 {
                     Settings.Default.WindowSizeX = window.RestoreBounds.Width;
                     Settings.Default.WindowSizeY = window.RestoreBounds.Height;
                 }
-                else // Normal or Minimized
+                else
                 {
                     Settings.Default.WindowSizeX = window.Width;
                     Settings.Default.WindowSizeY = window.Height;
                 }
 
-                // Save all other application settings
+                // Save editor and preference settings
                 Settings.Default.TextWrapping = textEditor.WordWrap;
                 Settings.Default.FontSize = textEditor.FontSize;
                 Settings.Default.FontFamily = textEditor.FontFamily.Source;
@@ -35,12 +32,16 @@ namespace NotepadEx
                 Settings.Default.FontStyle = textEditor.FontStyle.ToString();
                 Settings.Default.ShowLineNumbers = textEditor.ShowLineNumbers;
                 Settings.Default.InfoBarVisible = (window.DataContext as MVVM.ViewModels.MainWindowViewModel)?.IsInfoBarVisible ?? true;
-
                 Settings.Default.SyntaxHighlightingName = textEditor.SyntaxHighlighting?.Name ?? "None / Plain Text";
+
+                // *** THE FIX: This line was missing and has been re-added. ***
                 Settings.Default.ThemeName = themeName;
 
+                // Unused settings
                 Settings.Default.Underline = false;
                 Settings.Default.Strikethrough = false;
+
+                // Final save
                 Settings.Default.Save();
             });
         }

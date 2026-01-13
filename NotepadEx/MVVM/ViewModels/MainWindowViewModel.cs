@@ -99,6 +99,9 @@ namespace NotepadEx.MVVM.ViewModels
             }
             CurrentSyntaxHighlighting = AvailableSyntaxHighlightings.FirstOrDefault(h => h.Name.Equals(savedHighlightingName, StringComparison.OrdinalIgnoreCase));
 
+            // FIX: Subscribe to the ThemeChanged event to notify the UI when the theme name changes
+            this.themeService.ThemeChanged += (s, e) => OnPropertyChanged(nameof(CurrentThemeName));
+
             this.themeService.LoadCurrentTheme();
             UpdateRecentFilesMenu();
             UpdateStatusBar();
@@ -235,21 +238,13 @@ namespace NotepadEx.MVVM.ViewModels
             }
         }
 
-        public string CurrentThemeName
-        {
-            get => Settings.Default.ThemeName;
-            set
-            {
-                if(Settings.Default.ThemeName == value) return;
-                Settings.Default.ThemeName = value;
-                OnPropertyChanged();
-            }
-        }
+        // FIX: This property now correctly reads the name from the service
+        public string CurrentThemeName => themeService.CurrentThemeName;
 
         private void OnThemeChange(ThemeInfo theme)
         {
             if(theme == null) return;
-            CurrentThemeName = theme.Name;
+            // FIX: Simply tell the service to apply the new theme
             themeService.ApplyTheme(theme.Name);
             themeService.AddEditableColorLinesToWindow();
         }
@@ -262,7 +257,6 @@ namespace NotepadEx.MVVM.ViewModels
                 if(document.Content == value) return;
                 document.Content = value;
                 OnPropertyChanged();
-                // FIX: Update title to show the unsaved asterisk
                 UpdateTitle();
             }
         }
@@ -340,7 +334,7 @@ namespace NotepadEx.MVVM.ViewModels
             var dialog = new Microsoft.Win32.SaveFileDialog { Filter = "Text Files (*.txt)|*.txt|All Files (*.*)|*.*", DefaultExt = ".txt" };
             if(dialog.ShowDialog() != true)
             {
-                return false; // User cancelled
+                return false;
             }
             document.FilePath = dialog.FileName;
             return await SaveDocument();
@@ -370,13 +364,10 @@ namespace NotepadEx.MVVM.ViewModels
             switch(result)
             {
                 case MessageBoxResult.Yes:
-                    // FIX: Await the save and return its success status
                     return await SaveDocument();
                 case MessageBoxResult.No:
-                    // User chose not to save, so we can proceed
                     return true;
                 case MessageBoxResult.Cancel:
-                    // User cancelled the operation (e.g., closing), so we stop
                     return false;
                 default:
                     return true;
@@ -387,7 +378,6 @@ namespace NotepadEx.MVVM.ViewModels
         {
             if(string.IsNullOrEmpty(document.FilePath))
             {
-                // FIX: Await and return the result of the Save As dialog
                 return await SaveDocumentAs();
             }
             try
@@ -397,12 +387,12 @@ namespace NotepadEx.MVVM.ViewModels
                 document.IsModified = false;
                 UpdateTitle();
                 UpdateStatusBar();
-                return true; // Indicate success
+                return true;
             }
             catch(Exception ex)
             {
                 windowService.ShowDialog($"Error saving file: {ex.Message}", "Error");
-                return false; // Indicate failure
+                return false;
             }
         }
 

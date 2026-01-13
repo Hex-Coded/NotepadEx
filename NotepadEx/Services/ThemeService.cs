@@ -19,7 +19,10 @@ namespace NotepadEx.Services
     {
         public event EventHandler ThemeChanged;
         public ColorTheme CurrentTheme { get; private set; }
-        public string CurrentThemeName { get; private set; }
+
+        // FIX: This property now has a public setter and is the source of truth
+        public string CurrentThemeName { get; set; }
+
         public ObservableCollection<ThemeInfo> AvailableThemes { get; private set; }
 
         private readonly Application application;
@@ -40,7 +43,8 @@ namespace NotepadEx.Services
         public void LoadCurrentTheme()
         {
             // This method reads the saved theme name from settings and tells ApplyTheme to load it.
-            ApplyTheme(Settings.Default.ThemeName);
+            var themeNameToLoad = Settings.Default.ThemeName;
+            ApplyTheme(themeNameToLoad);
         }
 
         public void ApplyTheme(string themeName)
@@ -55,15 +59,19 @@ namespace NotepadEx.Services
                         var fileData = File.ReadAllText(Path.Combine(DirectoryUtil.NotepadExThemesPath, themeName));
                         var themeSerialized = JsonSerializer.Deserialize<ColorThemeSerializable>(fileData);
                         theme = themeSerialized.ToColorTheme();
+
+                        // FIX: Update the service's own name upon successful load
+                        this.CurrentThemeName = themeName;
                     }
                     else
                     {
                         // If no theme is found or specified, create a default/empty one.
                         theme = new ColorTheme();
+
+                        // FIX: Clear the current theme name if it fails to load
+                        this.CurrentThemeName = null;
                     }
 
-                    // The service's main job is to manage the theme object and apply the brushes.
-                    // It no longer manages the name or saves the setting.
                     CurrentTheme = theme;
 
                     ApplyThemeObject(theme.themeObj_TextEditorBg, UIConstants.Color_TextEditorBg);
@@ -99,7 +107,6 @@ namespace NotepadEx.Services
                 }
                 finally
                 {
-                    // Notify any subscribers (like MainWindow for AvalonEdit) that the theme has changed.
                     ThemeChanged?.Invoke(this, EventArgs.Empty);
                 }
             });

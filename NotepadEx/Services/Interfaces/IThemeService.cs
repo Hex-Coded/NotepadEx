@@ -9,6 +9,8 @@ namespace NotepadEx.Services.Interfaces
     {
         event EventHandler ThemeChanged;
         ColorTheme CurrentTheme { get; }
+        string CurrentThemeName { get; set; }
+
         ObservableCollection<ThemeInfo> AvailableThemes { get; }
         void LoadCurrentTheme();
         void ApplyTheme(string themeName);

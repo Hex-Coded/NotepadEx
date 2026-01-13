@@ -252,7 +252,6 @@ namespace NotepadEx.MVVM.ViewModels
             if(openRecentMenuItem == null) return;
 
             var recentFiles = RecentFileManager.GetRecentFiles();
-            var menuFgBrush = (Brush)Application.Current.FindResource("Color_MenuItemFg");
 
             openRecentMenuItem.Items.Clear();
 
@@ -261,7 +260,6 @@ namespace NotepadEx.MVVM.ViewModels
                 MenuItem emptyItem = new MenuItem
                 {
                     Header = "(No recent files)",
-                    Foreground = menuFgBrush,
                     IsEnabled = false
                 };
                 openRecentMenuItem.Items.Add(emptyItem);
@@ -272,8 +270,7 @@ namespace NotepadEx.MVVM.ViewModels
                 {
                     MenuItem menuItem = new MenuItem
                     {
-                        Header = file,
-                        Foreground = menuFgBrush
+                        Header = file
                     };
 
                     // Add click handler directly to each menu item

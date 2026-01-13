@@ -2,3 +2,5 @@
 ctrl + a for large files takes significantly long
 
 Should prompt user for saving theme if theme has been edited and closing the actual application (not theme window it self)
+
+closing and hitting cancel on save prompt closes app instead of leavbing open

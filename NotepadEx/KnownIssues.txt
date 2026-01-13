@@ -6,3 +6,6 @@ Should prompt user for saving theme if theme has been edited and closing the act
 closing and hitting cancel on save prompt closes app instead of leavbing open
 
 not showing asterisk when unsavecd*
+
+not saving last used window size on close of app (should restore on open)
+it should be saving all settings like: last used window size, last theme, font style / sizing, all preferences like word wrapping, info bars, line nums, syntax hiliighting

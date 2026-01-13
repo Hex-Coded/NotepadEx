@@ -10,7 +10,14 @@
     <ApplicationIcon>Images\NotepadEx.ico</ApplicationIcon>
   </PropertyGroup>
 
-  <ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="NotepadEx.Tests" />
+	</ItemGroup>
+
+
+
+	<ItemGroup>
     <Compile Remove="Windows\**" />
     <EmbeddedResource Remove="Windows\**" />
     <None Remove="Windows\**" />

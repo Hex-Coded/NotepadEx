@@ -38,15 +38,26 @@ namespace NotepadEx
 
             Settings.Default.MenuBarAutoHide = false;
 
-            DataContext = viewModel = new MainWindowViewModel(windowService, documentService, themeService, fontService, MenuItemFileDropDown, textEditor, () => SettingsManager.SaveSettings(this, textEditor, themeService.CurrentThemeName));
+            DataContext = viewModel = new MainWindowViewModel(
+                windowService,
+                documentService,
+                themeService,
+                fontService,
+                MenuItem_OpenRecent, // This control is named in your MainWindow.xaml
+                textEditor,
+                () => SettingsManager.SaveSettings(this, textEditor, themeService.CurrentThemeName)
+            );
+
             viewModel.TitleBarViewModel = CustomTitleBar.InitializeTitleBar(this, "NotepadEx", onClose: this.Close);
 
             LoadWindowSettings();
             InitializeWindowEvents();
 
             this.KeyDown += MainWindow_KeyDown;
+
             Loaded += MainWindow_Loaded;
         }
+
 
         private void LoadWindowSettings()
         {

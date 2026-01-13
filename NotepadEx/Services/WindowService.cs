@@ -42,5 +42,10 @@ public class WindowService : IWindowService
     public void SetWindowState(WindowState state) => owner.WindowState = state;
 
     public WindowState GetWindowState() => owner.WindowState;
+
+    public MessageBoxResult ShowSaveConfirmationDialog(string message, string title = "")
+    {
+        return MessageBox.Show(owner, message, title, MessageBoxButton.YesNoCancel, MessageBoxImage.Warning);
+    }
 }
 

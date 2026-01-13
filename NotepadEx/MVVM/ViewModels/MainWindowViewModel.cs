@@ -63,7 +63,9 @@ namespace NotepadEx.MVVM.ViewModels
         public ObservableCollection<ThemeInfo> AvailableThemes => themeService.AvailableThemes;
         public ObservableCollection<IHighlightingDefinition> AvailableSyntaxHighlightings { get; }
 
-        public MainWindowViewModel(IWindowService windowService, IDocumentService documentService, IThemeService themeService, IFontService fontService, MenuItem menuItemFileDropdown, TextEditor textEditor, Action SaveSettings)
+        private readonly MenuItem openRecentMenuItemContainer;
+
+        public MainWindowViewModel(IWindowService windowService, IDocumentService documentService, IThemeService themeService, IFontService fontService, MenuItem openRecentMenuItemContainer, TextEditor textEditor, Action SaveSettings)
         {
             this.windowService = windowService;
             this.documentService = documentService;
@@ -72,6 +74,7 @@ namespace NotepadEx.MVVM.ViewModels
             this.menuItemFileDropdown = menuItemFileDropdown;
             this.textEditor = textEditor;
             this.SaveSettings = SaveSettings;
+            this.openRecentMenuItemContainer = openRecentMenuItemContainer;
 
             document = new Document();
             this.textEditor.TextArea.Caret.PositionChanged += Caret_PositionChanged;
@@ -106,6 +109,43 @@ namespace NotepadEx.MVVM.ViewModels
             UpdateRecentFilesMenu();
             UpdateStatusBar();
             OnPropertyChanged(nameof(AvailableThemes));
+        }
+
+        private void UpdateRecentFilesMenu()
+        {
+            // FIX: Remove the untestable FindName call. Use the injected container directly.
+            var openRecentMenuItem = this.openRecentMenuItemContainer;
+            if(openRecentMenuItem == null) return;
+
+            var recentFiles = RecentFileManager.GetRecentFiles();
+
+            openRecentMenuItem.Items.Clear();
+
+            if(recentFiles.Count == 0)
+            {
+                MenuItem emptyItem = new MenuItem
+                {
+                    Header = "(No recent files)",
+                    IsEnabled = false
+                };
+                openRecentMenuItem.Items.Add(emptyItem);
+            }
+            else
+            {
+                foreach(string file in recentFiles)
+                {
+                    MenuItem menuItem = new MenuItem
+                    {
+                        Header = file
+                    };
+                    string filePath = file;
+                    menuItem.Click += async (s, e) =>
+                    {
+                        await OpenRecentFile(filePath);
+                    };
+                    openRecentMenuItem.Items.Add(menuItem);
+                }
+            }
         }
 
         private void TextArea_TextEntered(object sender, TextCompositionEventArgs e)
@@ -215,30 +255,6 @@ namespace NotepadEx.MVVM.ViewModels
             UpdateRecentFilesMenu();
         }
 
-        private void UpdateRecentFilesMenu()
-        {
-            var openRecentMenuItem = (MenuItem)menuItemFileDropdown.FindName("MenuItem_OpenRecent");
-            if(openRecentMenuItem == null) return;
-            var recentFiles = RecentFileManager.GetRecentFiles();
-            openRecentMenuItem.Items.Clear();
-            if(recentFiles.Count == 0)
-            {
-                MenuItem emptyItem = new MenuItem { Header = "(No recent files)", IsEnabled = false };
-                openRecentMenuItem.Items.Add(emptyItem);
-            }
-            else
-            {
-                foreach(string file in recentFiles)
-                {
-                    MenuItem menuItem = new MenuItem { Header = file };
-                    string filePath = file;
-                    menuItem.Click += async (s, e) => { await OpenRecentFile(filePath); };
-                    openRecentMenuItem.Items.Add(menuItem);
-                }
-            }
-        }
-
-        // FIX: This property now correctly reads the name from the service
         public string CurrentThemeName => themeService.CurrentThemeName;
 
         private void OnThemeChange(ThemeInfo theme)
@@ -360,7 +376,10 @@ namespace NotepadEx.MVVM.ViewModels
         public async Task<bool> PromptToSaveChanges()
         {
             if(!document.IsModified) return true;
-            var result = MessageBox.Show("You have unsaved changes. Would you like to save them before proceeding?", "Unsaved Changes", MessageBoxButton.YesNoCancel, MessageBoxImage.Warning);
+
+            // FIX: Use the mockable service instead of the static MessageBox.Show
+            var result = windowService.ShowSaveConfirmationDialog("You have unsaved changes. Would you like to save them before proceeding?", "Unsaved Changes");
+
             switch(result)
             {
                 case MessageBoxResult.Yes:
@@ -373,7 +392,6 @@ namespace NotepadEx.MVVM.ViewModels
                     return true;
             }
         }
-
         public async Task<bool> SaveDocument()
         {
             if(string.IsNullOrEmpty(document.FilePath))

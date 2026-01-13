@@ -2,6 +2,7 @@
 using ICSharpCode.AvalonEdit;
 using NotepadEx.MVVM.View.UserControls;
 using NotepadEx.MVVM.ViewModels;
+using NotepadEx.Util;
 
 namespace NotepadEx.MVVM.View
 {
@@ -9,6 +10,7 @@ namespace NotepadEx.MVVM.View
     {
         private readonly TextEditor targetEditor;
         private int lastSearchOffset = -1;
+        private WindowChrome _windowChrome;
 
         public CustomTitleBarViewModel TitleBarViewModel { get; }
 
@@ -18,6 +20,20 @@ namespace NotepadEx.MVVM.View
             DataContext = this;
             TitleBarViewModel = CustomTitleBar.InitializeTitleBar(this, "Find and Replace", showMinimize: true, showMaximize: false, isResizable: false);
             targetEditor = editor;
+
+            Loaded += FindAndReplaceWindow_Loaded;
+            Closing += FindAndReplaceWindow_Closing;
+        }
+
+        private void FindAndReplaceWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            _windowChrome = new WindowChrome(this);
+            _windowChrome.Enable();
+        }
+
+        private void FindAndReplaceWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            _windowChrome?.Detach();
         }
 
         private void FindNextButton_Click(object sender, RoutedEventArgs e) => Find(true);
@@ -36,14 +52,12 @@ namespace NotepadEx.MVVM.View
             if(forward)
             {
                 foundIndex = targetEditor.Document.Text.IndexOf(searchText, startOffset, comparison);
-                // Wrap around
                 if(foundIndex == -1)
                     foundIndex = targetEditor.Document.Text.IndexOf(searchText, 0, comparison);
             }
             else
             {
                 foundIndex = targetEditor.Document.Text.LastIndexOf(searchText, startOffset - 1, comparison);
-                // Wrap around
                 if(foundIndex == -1)
                     foundIndex = targetEditor.Document.Text.LastIndexOf(searchText, targetEditor.Document.TextLength, comparison);
             }

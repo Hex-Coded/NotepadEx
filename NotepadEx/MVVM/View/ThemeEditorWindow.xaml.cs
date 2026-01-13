@@ -19,6 +19,7 @@ namespace NotepadEx.MVVM.View
         private readonly IThemeService themeService;
         private readonly IWindowService windowService;
         private CustomTitleBarViewModel titleBarViewModel;
+        private WindowChrome _windowChrome;
 
         public CustomTitleBarViewModel TitleBarViewModel => titleBarViewModel;
 
@@ -32,6 +33,20 @@ namespace NotepadEx.MVVM.View
 
             this.themeService.LoadCurrentTheme();
             AddEditableColorLinesToWindow();
+
+            Loaded += ThemeEditorWindow_Loaded;
+            Closing += ThemeEditorWindow_Closing;
+        }
+
+        private void ThemeEditorWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            _windowChrome = new WindowChrome(this);
+            _windowChrome.Enable();
+        }
+
+        private void ThemeEditorWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            _windowChrome?.Detach();
         }
 
         public void AddEditableColorLinesToWindow()
@@ -83,7 +98,6 @@ namespace NotepadEx.MVVM.View
         private void AddColorLine(string resourceKey, string friendlyThemeName, ThemeObject themeObj)
         {
             ColorPickerLine line = new ColorPickerLine();
-            // Pass the IThemeService instance to the ViewModel to enable live updates.
             line.ViewModel.SetupThemeObj(themeObj, resourceKey, friendlyThemeName, this.themeService);
 
             if(UIConstants.UIColorKeysMain.Contains(resourceKey))
@@ -136,11 +150,7 @@ namespace NotepadEx.MVVM.View
 
         private void OnWindowMouseMove(object sender, MouseEventArgs e)
         {
-            if(WindowState == WindowState.Normal)
-            {
-                var position = e.GetPosition(this);
-                WindowResizerUtil.ResizeWindow(this, position);
-            }
+            // Removed manual resize handling - WindowChrome handles this now
         }
     }
 }

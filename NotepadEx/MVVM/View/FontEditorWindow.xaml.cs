@@ -4,6 +4,7 @@ using System.Windows;
 using NotepadEx.MVVM.View.UserControls;
 using NotepadEx.MVVM.ViewModels;
 using NotepadEx.Services.Interfaces;
+using NotepadEx.Util;
 using FontFamily = System.Windows.Media.FontFamily;
 
 namespace NotepadEx.MVVM.View;
@@ -13,6 +14,8 @@ public partial class FontEditorWindow : Window
     readonly IFontService fontService;
     FontSettings workingCopy;
     CustomTitleBarViewModel titleBarViewModel;
+    private WindowChrome _windowChrome;
+
     public CustomTitleBarViewModel TitleBarViewModel => titleBarViewModel;
     public FontSettings CurrentFont
     {
@@ -47,6 +50,20 @@ public partial class FontEditorWindow : Window
         FontSizeTextBox.Text = workingCopy.FontSize.ToString();
         FontStyleComboBox.SelectedValue = workingCopy.FontStyle;
         FontWeightComboBox.SelectedValue = workingCopy.FontWeight;
+
+        Loaded += FontEditorWindow_Loaded;
+        Closing += FontEditorWindow_Closing;
+    }
+
+    private void FontEditorWindow_Loaded(object sender, RoutedEventArgs e)
+    {
+        _windowChrome = new WindowChrome(this);
+        _windowChrome.Enable();
+    }
+
+    private void FontEditorWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+    {
+        _windowChrome?.Detach();
     }
 
     void FontFamilyComboBox_Loaded(object sender, RoutedEventArgs e)

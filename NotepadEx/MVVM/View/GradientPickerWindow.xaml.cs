@@ -18,10 +18,10 @@ public partial class GradientPickerWindow : Window
     bool updatingFromAngle = false;
     bool updatingFromOffset = false;
     bool updatingFromScale = false;
-    //double ScaleX { get; set; } = 1.0;
-    //double ScaleY { get; set; } = 1.0;
 
     CustomTitleBarViewModel titleBarViewModel;
+    private WindowChrome _windowChrome;
+
     public CustomTitleBarViewModel TitleBarViewModel => titleBarViewModel;
 
     public GradientPickerWindow()
@@ -35,6 +35,20 @@ public partial class GradientPickerWindow : Window
         GradientStops.Add(new GradientStop(Colors.White, 0));
         GradientStops.Add(new GradientStop(Colors.Black, 1));
         UpdateGradientPreview();
+
+        Loaded += GradientPickerWindow_Loaded;
+        Closing += GradientPickerWindow_Closing;
+    }
+
+    private void GradientPickerWindow_Loaded(object sender, RoutedEventArgs e)
+    {
+        _windowChrome = new WindowChrome(this);
+        _windowChrome.Enable();
+    }
+
+    private void GradientPickerWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+    {
+        _windowChrome?.Detach();
     }
 
     public void SetGradient(LinearGradientBrush brush)
@@ -63,31 +77,25 @@ public partial class GradientPickerWindow : Window
 
         if(StartXSlider != null && StartYSlider != null && EndXSlider != null && EndYSlider != null)
         {
-            // Original start and end points
             double startXOriginal = StartXSlider.Value;
             double startYOriginal = StartYSlider.Value;
             double endXOriginal = EndXSlider.Value;
             double endYOriginal = EndYSlider.Value;
 
-            // Calculate the center point of the gradient
             double centerX = (startXOriginal + endXOriginal) / 2;
             double centerY = (startYOriginal + endYOriginal) / 2;
 
-            // Calculate the angle and length of the original gradient
             double dx = endXOriginal - startXOriginal;
             double dy = endYOriginal - startYOriginal;
-            double angle = Math.Atan2(dy, dx); // Angle in radians
+            double angle = Math.Atan2(dy, dx);
             double originalLength = Math.Sqrt(dx * dx + dy * dy);
 
-            // Apply scaling to the length while keeping the angle intact
             double scaledLengthX = originalLength;
             double scaledLengthY = originalLength;
 
-            // Calculate new half-lengths based on scaled lengths
             double newHalfLengthX = (scaledLengthX / 2) * Math.Cos(angle);
             double newHalfLengthY = (scaledLengthY / 2) * Math.Sin(angle);
 
-            // Recalculate the start and end points based on the scaled length and fixed angle
             double startX = centerX - newHalfLengthX;
             double startY = centerY - newHalfLengthY;
             double endX = centerX + newHalfLengthX;
@@ -180,8 +188,6 @@ public partial class GradientPickerWindow : Window
 
             void SetStopColorEz(Color color) => SetStopColor(new SolidColorBrush(color), stopIndex, stopOffset);
         }
-
-
     }
 
     void CopyStop_Click(object sender, RoutedEventArgs e)
@@ -215,7 +221,6 @@ public partial class GradientPickerWindow : Window
     {
         if(sender is not Button button || button.Tag is not System.Windows.Shapes.Rectangle rectangle ||
             rectangle.Fill is not SolidColorBrush brush) return;
-
 
         if((sender as FrameworkElement)?.DataContext is GradientStop selectedStop)
         {

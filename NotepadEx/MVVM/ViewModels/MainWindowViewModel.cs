@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -106,7 +107,6 @@ namespace NotepadEx.MVVM.ViewModels
 
         private void TextArea_TextEntered(object sender, TextCompositionEventArgs e)
         {
-            // Ensure caret is visible when typing
             EnsureCaretVisible();
         }
 
@@ -122,69 +122,40 @@ namespace NotepadEx.MVVM.ViewModels
             {
                 var caret = textEditor.TextArea.Caret;
                 var line = caret.Line;
-
-                // Find the ScrollViewer that contains the TextEditor
                 var scrollViewer = FindScrollViewer(textEditor);
                 if(scrollViewer == null) return;
-
                 var viewportHeight = scrollViewer.ViewportHeight;
                 var verticalOffset = scrollViewer.VerticalOffset;
-
-                // Calculate line heights
                 double lineHeight = textEditor.FontSize * textEditor.FontFamily.LineSpacing;
-                double bottomPadding = lineHeight * 3; // 3 lines of padding at bottom
-                double topPadding = lineHeight * 1.5; // 1.5 lines of padding at top
-
-                // Get approximate position of current line
+                double bottomPadding = lineHeight * 3;
+                double topPadding = lineHeight * 1.5;
                 double linePosition = (line - 1) * lineHeight;
                 double relativePosition = linePosition - verticalOffset;
-
-                // Check if we need to scroll
                 if(relativePosition > viewportHeight - bottomPadding)
                 {
-                    // Too close to bottom - scroll down
                     double newOffset = linePosition - viewportHeight + bottomPadding;
                     scrollViewer.ScrollToVerticalOffset(Math.Max(0, newOffset));
                 }
                 else if(relativePosition < topPadding)
                 {
-                    // Too close to top - scroll up
                     double newOffset = linePosition - topPadding;
                     scrollViewer.ScrollToVerticalOffset(Math.Max(0, newOffset));
                 }
             }
-            catch
-            {
-                // Fallback to simple scroll
-                try
-                {
-                    textEditor.ScrollToLine(textEditor.TextArea.Caret.Line);
-                }
-                catch
-                {
-                    // Ignore any errors during scroll
-                }
-            }
+            catch { try { textEditor.ScrollToLine(textEditor.TextArea.Caret.Line); } catch { } }
         }
 
         private System.Windows.Controls.ScrollViewer FindScrollViewer(DependencyObject element)
         {
             if(element == null) return null;
-
-            // Check if this element is a ScrollViewer
-            if(element is System.Windows.Controls.ScrollViewer scrollViewer)
-                return scrollViewer;
-
-            // Search children
+            if(element is System.Windows.Controls.ScrollViewer scrollViewer) return scrollViewer;
             int childCount = VisualTreeHelper.GetChildrenCount(element);
             for(int i = 0; i < childCount; i++)
             {
                 var child = VisualTreeHelper.GetChild(element, i);
                 var result = FindScrollViewer(child);
-                if(result != null)
-                    return result;
+                if(result != null) return result;
             }
-
             return null;
         }
 
@@ -207,8 +178,6 @@ namespace NotepadEx.MVVM.ViewModels
             OpenFileLocationCommand = new RelayCommand(OpenFileLocation, () => !string.IsNullOrEmpty(document.FilePath));
             MouseMoveCommand = new RelayCommand<double>(HandleMouseMovement);
             ChangeSyntaxHighlightingCommand = new RelayCommand<IHighlightingDefinition>(def => CurrentSyntaxHighlighting = def);
-
-            // OpenRecentCommand is no longer needed since we're using direct click handlers
         }
 
         private async Task LoadDocument(string filePath)
@@ -216,10 +185,8 @@ namespace NotepadEx.MVVM.ViewModels
             try
             {
                 await documentService.LoadDocumentAsync(filePath, document);
-
                 DocumentContent = document.Content;
                 document.IsModified = false;
-
                 UpdateTitle();
                 UpdateStatusBar();
                 AddRecentFile(filePath);
@@ -229,7 +196,6 @@ namespace NotepadEx.MVVM.ViewModels
                 if(ex is FileNotFoundException || ex is DirectoryNotFoundException)
                 {
                     windowService.ShowDialog($"The file could not be found:\n{filePath}\n\nIt will be removed from the recent files list.", "File Not Found");
-
                     RecentFileManager.RemoveFile(filePath);
                     UpdateRecentFilesMenu();
                 }
@@ -250,36 +216,20 @@ namespace NotepadEx.MVVM.ViewModels
         {
             var openRecentMenuItem = (MenuItem)menuItemFileDropdown.FindName("MenuItem_OpenRecent");
             if(openRecentMenuItem == null) return;
-
             var recentFiles = RecentFileManager.GetRecentFiles();
-
             openRecentMenuItem.Items.Clear();
-
             if(recentFiles.Count == 0)
             {
-                MenuItem emptyItem = new MenuItem
-                {
-                    Header = "(No recent files)",
-                    IsEnabled = false
-                };
+                MenuItem emptyItem = new MenuItem { Header = "(No recent files)", IsEnabled = false };
                 openRecentMenuItem.Items.Add(emptyItem);
             }
             else
             {
                 foreach(string file in recentFiles)
                 {
-                    MenuItem menuItem = new MenuItem
-                    {
-                        Header = file
-                    };
-
-                    // Add click handler directly to each menu item
-                    string filePath = file; // Capture for closure
-                    menuItem.Click += async (s, e) =>
-                    {
-                        await OpenRecentFile(filePath);
-                    };
-
+                    MenuItem menuItem = new MenuItem { Header = file };
+                    string filePath = file;
+                    menuItem.Click += async (s, e) => { await OpenRecentFile(filePath); };
                     openRecentMenuItem.Items.Add(menuItem);
                 }
             }
@@ -299,11 +249,8 @@ namespace NotepadEx.MVVM.ViewModels
         private void OnThemeChange(ThemeInfo theme)
         {
             if(theme == null) return;
-
             CurrentThemeName = theme.Name;
-
             themeService.ApplyTheme(theme.Name);
-
             themeService.AddEditableColorLinesToWindow();
         }
 
@@ -312,8 +259,11 @@ namespace NotepadEx.MVVM.ViewModels
             get => document.Content;
             set
             {
+                if(document.Content == value) return;
                 document.Content = value;
                 OnPropertyChanged();
+                // FIX: Update title to show the unsaved asterisk
+                UpdateTitle();
             }
         }
 
@@ -363,9 +313,7 @@ namespace NotepadEx.MVVM.ViewModels
         public string CurrentSyntaxHighlightingName => CurrentSyntaxHighlighting?.Name ?? "None / Plain Text";
 
         private void OnOpenThemeEditor() => themeService.OpenThemeEditor();
-
         private void OnOpenFontEditor() => fontService.OpenFontEditor();
-
         private void OnOpenFindReplaceEditor()
         {
             findAndReplaceWindow ??= new FindAndReplaceWindow(textEditor);
@@ -375,43 +323,31 @@ namespace NotepadEx.MVVM.ViewModels
 
         private async Task OpenDocument()
         {
-            if(!PromptToSaveChanges()) return;
-
-            var dialog = new Microsoft.Win32.OpenFileDialog
-            {
-                Filter = "Text Files (*.txt)|*.txt|All Files (*.*)|*.*"
-            };
-
+            if(!await PromptToSaveChanges()) return;
+            var dialog = new Microsoft.Win32.OpenFileDialog { Filter = "Text Files (*.txt)|*.txt|All Files (*.*)|*.*" };
             if(dialog.ShowDialog() != true) return;
-
             var fileInfo = new FileInfo(dialog.FileName);
             if(fileInfo.Length > 20 * 1024 * 1024)
             {
                 var proceed = windowService.ShowConfirmDialog("This file is very large and may cause performance issues. Continue?", "Large File Warning");
                 if(!proceed) return;
             }
-
             await LoadDocument(dialog.FileName);
         }
 
-        private async Task SaveDocumentAs()
+        private async Task<bool> SaveDocumentAs()
         {
-            var dialog = new Microsoft.Win32.SaveFileDialog
+            var dialog = new Microsoft.Win32.SaveFileDialog { Filter = "Text Files (*.txt)|*.txt|All Files (*.*)|*.*", DefaultExt = ".txt" };
+            if(dialog.ShowDialog() != true)
             {
-                Filter = "Text Files (*.txt)|*.txt|All Files (*.*)|*.*",
-                DefaultExt = ".txt"
-            };
-
-            if(dialog.ShowDialog() != true) return;
-
+                return false; // User cancelled
+            }
             document.FilePath = dialog.FileName;
-            await SaveDocument();
+            return await SaveDocument();
         }
 
         private void ToggleWordWrap() => IsWordWrapEnabled = !IsWordWrapEnabled;
-
         private void ToggleInfoBar() => IsInfoBarVisible = !IsInfoBarVisible;
-
         private void UpdateMenuBarVisibility(bool autoHide)
         {
             MenuBarHeight = autoHide ? 0 : UIConstants.MenuBarHeight;
@@ -427,33 +363,33 @@ namespace NotepadEx.MVVM.ViewModels
             }
         }
 
-        public bool PromptToSaveChanges()
+        public async Task<bool> PromptToSaveChanges()
         {
             if(!document.IsModified) return true;
-
             var result = MessageBox.Show("You have unsaved changes. Would you like to save them before proceeding?", "Unsaved Changes", MessageBoxButton.YesNoCancel, MessageBoxImage.Warning);
             switch(result)
             {
                 case MessageBoxResult.Yes:
-                    _ = SaveDocument();
-                    return true;
+                    // FIX: Await the save and return its success status
+                    return await SaveDocument();
                 case MessageBoxResult.No:
-                    document.IsModified = false;
+                    // User chose not to save, so we can proceed
                     return true;
                 case MessageBoxResult.Cancel:
+                    // User cancelled the operation (e.g., closing), so we stop
                     return false;
+                default:
+                    return true;
             }
-            return true;
         }
 
-        public async Task SaveDocument()
+        public async Task<bool> SaveDocument()
         {
             if(string.IsNullOrEmpty(document.FilePath))
             {
-                await SaveDocumentAs();
-                return;
+                // FIX: Await and return the result of the Save As dialog
+                return await SaveDocumentAs();
             }
-
             try
             {
                 document.Content = textEditor.Document.Text;
@@ -461,10 +397,12 @@ namespace NotepadEx.MVVM.ViewModels
                 document.IsModified = false;
                 UpdateTitle();
                 UpdateStatusBar();
+                return true; // Indicate success
             }
             catch(Exception ex)
             {
                 windowService.ShowDialog($"Error saving file: {ex.Message}", "Error");
+                return false; // Indicate failure
             }
         }
 
@@ -478,7 +416,7 @@ namespace NotepadEx.MVVM.ViewModels
 
         public async Task OpenRecentFile(string path)
         {
-            if(!PromptToSaveChanges()) return;
+            if(!await PromptToSaveChanges()) return;
             await LoadDocument(path);
         }
 
@@ -486,36 +424,26 @@ namespace NotepadEx.MVVM.ViewModels
         private void Cut() => textEditor.Cut();
         private void Paste() => textEditor.Paste();
 
-        private void NewDocument()
+        private async void NewDocument()
         {
-            if(!PromptToSaveChanges()) return;
-
+            if(!await PromptToSaveChanges()) return;
             document.FilePath = string.Empty;
             DocumentContent = string.Empty;
             document.IsModified = false;
-
             UpdateTitle();
             UpdateStatusBar();
         }
 
         private void PrintDocument()
         {
-            try
-            {
-                documentService.PrintDocument(document);
-            }
-            catch(Exception ex)
-            {
-                windowService.ShowDialog($"Error printing document: {ex.Message}", "Error");
-            }
+            try { documentService.PrintDocument(document); }
+            catch(Exception ex) { windowService.ShowDialog($"Error printing document: {ex.Message}", "Error"); }
         }
 
         public void HandleMouseMovement(double mouseY)
         {
-            if(Settings.Default.MenuBarAutoHide && mouseY < 2)
-                UpdateMenuBarVisibility(false);
-            else if(Settings.Default.MenuBarAutoHide && mouseY > UIConstants.MenuBarHeight)
-                UpdateMenuBarVisibility(true);
+            if(Settings.Default.MenuBarAutoHide && mouseY < 2) UpdateMenuBarVisibility(false);
+            else if(Settings.Default.MenuBarAutoHide && mouseY > UIConstants.MenuBarHeight) UpdateMenuBarVisibility(true);
         }
 
         public void UpdateWindowState(WindowState newState)
@@ -527,8 +455,7 @@ namespace NotepadEx.MVVM.ViewModels
         private void OpenFileLocation()
         {
             var path = document.FilePath;
-            if(File.Exists(path))
-                Process.Start("explorer.exe", $"/select,\"{path}\"");
+            if(File.Exists(path)) Process.Start("explorer.exe", $"/select,\"{path}\"");
         }
 
         public void Cleanup()

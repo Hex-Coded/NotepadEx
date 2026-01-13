@@ -1,4 +1,6 @@
-﻿using System.Windows;
+﻿using System.Globalization;
+using System.Windows.Media;
+using System.Windows;
 
 namespace NotepadEx.Util;
 
@@ -6,16 +8,9 @@ public static class AppResourceUtil
 {
     public static bool TrySetResource(Application app, string path, object value)
     {
-        try
-        {
-            app.Resources[path] = value;
-            return true;
-        }
-        catch(Exception ex)
-        {
-            MessageBox.Show(ex.Message);
-            return false;
-        }
+        if(app == null) return false;
+        app.Resources[path] = value;
+        return true;
     }
 }
 
@@ -23,30 +18,20 @@ public static class AppResourceUtil<T>
 {
     public static bool TrySetResource<T>(Application app, string path, T value)
     {
-        try
-        {
-            app.Resources[path] = value;
-            return true;
-        }
-        catch(Exception ex) { MessageBox.Show(ex.Message); }
-        return false;
+        if(app == null) return false;
+        app.Resources[path] = value;
+        return true;
     }
 
     public static T TryGetResource(Application app, string path)
     {
-        try
+        if(app == null) return default;
+
+        var resource = app.Resources[path];
+        if(resource is T typedResource)
         {
-            var resource = app.Resources[path];
-            if(resource is T typedResource)
-            {
-                return typedResource;
-            }
-            return default;
+            return typedResource;
         }
-        catch(Exception ex)
-        {
-            MessageBox.Show(ex.Message);
-            return default;
-        }
+        return default;
     }
 }

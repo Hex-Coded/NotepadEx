@@ -16,7 +16,6 @@ namespace NotepadEx.MVVM.Models; public class Document
         {
             content = value;
             UpdateCachedLines();
-            IsModified = true;
         }
     }
 

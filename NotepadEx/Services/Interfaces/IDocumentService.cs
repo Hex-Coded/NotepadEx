@@ -5,7 +5,8 @@ namespace NotepadEx.Services.Interfaces
 {
     public interface IDocumentService
     {
-        Task LoadDocumentAsync(string filePath, Document document);
+        Task<string> LoadDocumentContentAsync(string filePath);
+
         Task SaveDocumentAsync(Document document);
         void PrintDocument(Document document);
     }

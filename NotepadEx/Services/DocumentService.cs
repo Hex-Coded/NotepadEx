@@ -8,15 +8,16 @@ namespace NotepadEx.Services
 {
     public class DocumentService : IDocumentService
     {
-        public async Task LoadDocumentAsync(string filePath, Document document)
+        // FIX: Implement the new interface method
+        public async Task<string> LoadDocumentContentAsync(string filePath)
         {
             if(!File.Exists(filePath))
                 throw new FileNotFoundException($"File not found: {filePath}");
 
-            document.Content = await File.ReadAllTextAsync(filePath);
-            document.FilePath = filePath;
-            document.IsModified = false;
+            return await File.ReadAllTextAsync(filePath);
         }
+
+        // The old LoadDocumentAsync is now replaced by the one above.
 
         public async Task SaveDocumentAsync(Document document)
         {
@@ -26,8 +27,7 @@ namespace NotepadEx.Services
 
         public void PrintDocument(Document document)
         {
-            // Note: This is still synchronous. For very large documents,
-            // this could also be a performance bottleneck.
+            // ... (this method is unchanged)
             var printDialog = new System.Windows.Forms.PrintDialog();
             if(printDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {

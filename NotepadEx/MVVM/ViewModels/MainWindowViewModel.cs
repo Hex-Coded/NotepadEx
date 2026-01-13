@@ -111,6 +111,54 @@ namespace NotepadEx.MVVM.ViewModels
             OnPropertyChanged(nameof(AvailableThemes));
         }
 
+        private async Task LoadDocument(string filePath)
+        {
+            try
+            {
+                // 1. Get the content from the service
+                string fileContent = await documentService.LoadDocumentContentAsync(filePath);
+
+                // 2. Update the document model's properties
+                document.FilePath = filePath;
+                document.IsModified = false;
+
+                // 3. Set the ViewModel's property. This will now correctly trigger OnPropertyChanged
+                //    because the internal document.Content is different from fileContent at this point.
+                DocumentContent = fileContent;
+
+                // 4. Update UI elements
+                UpdateTitle();
+                UpdateStatusBar();
+                AddRecentFile(filePath);
+            }
+            catch(Exception ex)
+            {
+                if(ex is FileNotFoundException || ex is DirectoryNotFoundException)
+                {
+                    windowService.ShowDialog($"The file could not be found:\n{filePath}\n\nIt will be removed from the recent files list.", "File Not Found");
+                    RecentFileManager.RemoveFile(filePath);
+                    UpdateRecentFilesMenu();
+                }
+                else
+                {
+                    windowService.ShowDialog($"Error loading file: {ex.Message}", "Error");
+                }
+            }
+        }
+
+        // The DocumentContent property setter is now correct and does not need to be changed.
+        public string DocumentContent
+        {
+            get => document.Content;
+            set
+            {
+                if(document.Content == value) return;
+                document.Content = value;
+                OnPropertyChanged();
+                UpdateTitle();
+            }
+        }
+
         private void UpdateRecentFilesMenu()
         {
             // FIX: Remove the untestable FindName call. Use the injected container directly.
@@ -223,32 +271,6 @@ namespace NotepadEx.MVVM.ViewModels
             ChangeSyntaxHighlightingCommand = new RelayCommand<IHighlightingDefinition>(def => CurrentSyntaxHighlighting = def);
         }
 
-        private async Task LoadDocument(string filePath)
-        {
-            try
-            {
-                await documentService.LoadDocumentAsync(filePath, document);
-                DocumentContent = document.Content;
-                document.IsModified = false;
-                UpdateTitle();
-                UpdateStatusBar();
-                AddRecentFile(filePath);
-            }
-            catch(Exception ex)
-            {
-                if(ex is FileNotFoundException || ex is DirectoryNotFoundException)
-                {
-                    windowService.ShowDialog($"The file could not be found:\n{filePath}\n\nIt will be removed from the recent files list.", "File Not Found");
-                    RecentFileManager.RemoveFile(filePath);
-                    UpdateRecentFilesMenu();
-                }
-                else
-                {
-                    windowService.ShowDialog($"Error loading file: {ex.Message}", "Error");
-                }
-            }
-        }
-
         private void AddRecentFile(string filePath)
         {
             RecentFileManager.AddFile(filePath);
@@ -263,18 +285,6 @@ namespace NotepadEx.MVVM.ViewModels
             // FIX: Simply tell the service to apply the new theme
             themeService.ApplyTheme(theme.Name);
             themeService.AddEditableColorLinesToWindow();
-        }
-
-        public string DocumentContent
-        {
-            get => document.Content;
-            set
-            {
-                if(document.Content == value) return;
-                document.Content = value;
-                OnPropertyChanged();
-                UpdateTitle();
-            }
         }
 
         public string StatusText { get => statusText; set => SetProperty(ref statusText, value); }
@@ -366,10 +376,23 @@ namespace NotepadEx.MVVM.ViewModels
 
         private void UpdateTitle()
         {
-            var title = string.IsNullOrEmpty(document.FileName) ? "NotepadEx" : $"NotepadEx   |  {document.FileName}{(document.IsModified ? "*" : "")}";
+            string finalTitle;
+            string modifiedIndicator = document.IsModified ? "*" : "";
+
+            if(string.IsNullOrEmpty(document.FileName))
+            {
+                // Handle the case for a new, unsaved document
+                finalTitle = $"{modifiedIndicator}NotepadEx{modifiedIndicator}";
+            }
+            else
+            {
+                // Handle the case for a previously saved document
+                finalTitle = $"{modifiedIndicator}NotepadEx  |  {document.FileName}{modifiedIndicator}";
+            }
+
             if(TitleBarViewModel != null)
             {
-                TitleBarViewModel.TitleText = title;
+                TitleBarViewModel.TitleText = finalTitle;
             }
         }
 

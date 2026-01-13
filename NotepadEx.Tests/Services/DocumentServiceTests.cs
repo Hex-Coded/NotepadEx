@@ -9,11 +9,11 @@ namespace NotepadEx.Tests.Services
     public class DocumentServiceTests
     {
         [Fact]
-        public async Task LoadDocumentAsync_ShouldReadContentCorrectly()
+        // FIX: Test name updated to reflect the new method name
+        public async Task LoadDocumentContentAsync_ShouldReadContentCorrectly()
         {
             // Arrange
             var service = new DocumentService();
-            var document = new Document();
             var tempFile = Path.GetTempFileName();
             var expectedContent = "Hello, World!";
             await File.WriteAllTextAsync(tempFile, expectedContent);
@@ -21,12 +21,13 @@ namespace NotepadEx.Tests.Services
             try
             {
                 // Act
-                await service.LoadDocumentAsync(tempFile, document);
+                // FIX: Call the method with one argument and capture the returned string
+                var actualContent = await service.LoadDocumentContentAsync(tempFile);
 
                 // Assert
-                Assert.Equal(expectedContent, document.Content);
-                Assert.Equal(tempFile, document.FilePath);
-                Assert.False(document.IsModified);
+                // FIX: Assert that the returned string is correct.
+                // The service is no longer responsible for modifying the Document object.
+                Assert.Equal(expectedContent, actualContent);
             }
             finally
             {
@@ -37,6 +38,7 @@ namespace NotepadEx.Tests.Services
         [Fact]
         public async Task SaveDocumentAsync_ShouldWriteContentCorrectly()
         {
+            // This test was already correct as the SaveDocumentAsync signature did not change.
             // Arrange
             var service = new DocumentService();
             var document = new Document
@@ -62,15 +64,16 @@ namespace NotepadEx.Tests.Services
         }
 
         [Fact]
-        public async Task LoadDocumentAsync_WhenFileDoesNotExist_ShouldThrowFileNotFoundException()
+        // FIX: Test name updated to reflect the new method name
+        public async Task LoadDocumentContentAsync_WhenFileDoesNotExist_ShouldThrowFileNotFoundException()
         {
             // Arrange
             var service = new DocumentService();
-            var document = new Document();
             var nonExistentFile = "C:\\non_existent_file_12345.tmp";
 
             // Act & Assert
-            await Assert.ThrowsAsync<FileNotFoundException>(() => service.LoadDocumentAsync(nonExistentFile, document));
+            // FIX: Call the method with only one argument in the lambda
+            await Assert.ThrowsAsync<FileNotFoundException>(() => service.LoadDocumentContentAsync(nonExistentFile));
         }
     }
 }

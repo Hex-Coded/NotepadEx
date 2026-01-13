@@ -114,6 +114,7 @@ namespace NotepadEx.MVVM.ViewModels
             EnsureCaretVisible();
         }
 
+
         private void EnsureCaretVisible()
         {
             try
@@ -341,6 +342,10 @@ namespace NotepadEx.MVVM.ViewModels
                 document.Content = textEditor.Document.Text;
                 await documentService.SaveDocumentAsync(document);
                 document.IsModified = false;
+
+                // FIX: Add the file to the recent list upon a successful save.
+                AddRecentFile(document.FilePath);
+
                 UpdateTitle();
                 UpdateStatusBar();
                 return true;

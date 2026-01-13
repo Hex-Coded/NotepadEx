@@ -7,5 +7,10 @@ closing and hitting cancel on save prompt closes app instead of leavbing open
 
 not showing asterisk when unsavecd*
 
+
 not saving last used window size on close of app (should restore on open)
 it should be saving all settings like: last used window size, last theme, font style / sizing, all preferences like word wrapping, info bars, line nums, syntax hiliighting
+
+
+need to be able to do hold alt and move lines like visual studio
+need to be able to do hold alt and drag marquee like vs

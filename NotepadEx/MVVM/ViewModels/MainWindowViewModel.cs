@@ -57,7 +57,6 @@ namespace NotepadEx.MVVM.ViewModels
         public ICommand OpenFindReplaceCommand { get; private set; }
         public ICommand OpenFileLocationCommand { get; private set; }
         public ICommand MouseMoveCommand { get; private set; }
-        public ICommand OpenRecentCommand { get; private set; }
         public ICommand ChangeSyntaxHighlightingCommand { get; private set; }
 
         public ObservableCollection<ThemeInfo> AvailableThemes => themeService.AvailableThemes;
@@ -207,8 +206,9 @@ namespace NotepadEx.MVVM.ViewModels
             OpenFindReplaceCommand = new RelayCommand(OnOpenFindReplaceEditor);
             OpenFileLocationCommand = new RelayCommand(OpenFileLocation, () => !string.IsNullOrEmpty(document.FilePath));
             MouseMoveCommand = new RelayCommand<double>(HandleMouseMovement);
-            OpenRecentCommand = new RelayCommand<RoutedEventArgs>(HandleOpenRecent);
             ChangeSyntaxHighlightingCommand = new RelayCommand<IHighlightingDefinition>(def => CurrentSyntaxHighlighting = def);
+
+            // OpenRecentCommand is no longer needed since we're using direct click handlers
         }
 
         private async Task LoadDocument(string filePath)
@@ -255,14 +255,36 @@ namespace NotepadEx.MVVM.ViewModels
             var menuFgBrush = (Brush)Application.Current.FindResource("Color_MenuItemFg");
 
             openRecentMenuItem.Items.Clear();
-            foreach(string file in recentFiles)
+
+            if(recentFiles.Count == 0)
             {
-                MenuItem menuItem = new MenuItem
+                MenuItem emptyItem = new MenuItem
                 {
-                    Header = file,
-                    Foreground = menuFgBrush
+                    Header = "(No recent files)",
+                    Foreground = menuFgBrush,
+                    IsEnabled = false
                 };
-                openRecentMenuItem.Items.Add(menuItem);
+                openRecentMenuItem.Items.Add(emptyItem);
+            }
+            else
+            {
+                foreach(string file in recentFiles)
+                {
+                    MenuItem menuItem = new MenuItem
+                    {
+                        Header = file,
+                        Foreground = menuFgBrush
+                    };
+
+                    // Add click handler directly to each menu item
+                    string filePath = file; // Capture for closure
+                    menuItem.Click += async (s, e) =>
+                    {
+                        await OpenRecentFile(filePath);
+                    };
+
+                    openRecentMenuItem.Items.Add(menuItem);
+                }
             }
         }
 
@@ -510,12 +532,6 @@ namespace NotepadEx.MVVM.ViewModels
             var path = document.FilePath;
             if(File.Exists(path))
                 Process.Start("explorer.exe", $"/select,\"{path}\"");
-        }
-
-        private async void HandleOpenRecent(RoutedEventArgs e)
-        {
-            if(e.OriginalSource is MenuItem menuItem && menuItem.Header is string path && path != "...")
-                await OpenRecentFile(path);
         }
 
         public void Cleanup()

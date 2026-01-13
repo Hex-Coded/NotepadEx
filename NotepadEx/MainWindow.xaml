@@ -61,12 +61,8 @@
                                     Foreground="{DynamicResource Color_MenuItemFg}"/>
 
                             <MenuItem Name="MenuItem_OpenRecent"  
-                                    Header="Open Recent" 
-                                    Foreground="{DynamicResource Color_MenuItemFg}">
-                                <b:Interaction.Behaviors>
-                                    <behaviors:MenuItemBehavior 
-                                        ClickCommand="{Binding OpenRecentCommand}"/>
-                                </b:Interaction.Behaviors>
+          Header="Open Recent" 
+          Foreground="{DynamicResource Color_MenuItemFg}">
                                 <MenuItem Header="..." Foreground="{DynamicResource Color_MenuItemFg}"/>
                             </MenuItem>
 

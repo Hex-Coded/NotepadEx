@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Xml;
 using ICSharpCode.AvalonEdit;
@@ -30,14 +31,9 @@ namespace NotepadEx
             var fontService = new FontService(Application.Current);
             fontService.LoadCurrentFont();
 
-
             ApplyAvalonEditTheme();
 
-
-
-
             themeService.ThemeChanged += (s, e) => ApplyAvalonEditTheme();
-
 
             Settings.Default.MenuBarAutoHide = false;
 
@@ -46,6 +42,9 @@ namespace NotepadEx
 
             InitializeWindowEvents();
 
+            // Add Ctrl+S keyboard shortcut
+            this.KeyDown += MainWindow_KeyDown;
+
             Loaded += MainWindow_Loaded;
         }
 
@@ -53,6 +52,16 @@ namespace NotepadEx
         {
             _windowChrome = new WindowChrome(this);
             _windowChrome.Enable();
+        }
+
+        private void MainWindow_KeyDown(object sender, KeyEventArgs e)
+        {
+            // Handle Ctrl+S for save
+            if(e.Key == Key.S && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+            {
+                e.Handled = true;
+                _ = viewModel.SaveDocument();
+            }
         }
 
         private void ApplyAvalonEditTheme()

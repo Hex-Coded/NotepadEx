@@ -12,8 +12,52 @@ namespace NotepadEx.Util
         private HwndSource _hwndSource;
 
         private const int WM_NCHITTEST = 0x0084;
+        private const int WM_GETMINMAXINFO = 0x0024;
 
         private readonly int _resizeBorderWidth = (int)UIConstants.ResizeBorderWidth;
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct POINT
+        {
+            public int X;
+            public int Y;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct MINMAXINFO
+        {
+            public POINT ptReserved;
+            public POINT ptMaxSize;
+            public POINT ptMaxPosition;
+            public POINT ptMinTrackSize;
+            public POINT ptMaxTrackSize;
+        }
+
+        [DllImport("user32.dll")]
+        static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
+
+        [DllImport("user32.dll")]
+        static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct MONITORINFO
+        {
+            public int cbSize;
+            public RECT rcMonitor;
+            public RECT rcWork;
+            public uint dwFlags;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct RECT
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
+        private const uint MONITOR_DEFAULTTONEAREST = 2;
 
         public WindowChrome(Window window)
         {
@@ -40,28 +84,65 @@ namespace NotepadEx.Util
 
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
-            if(msg == WM_NCHITTEST)
+            switch(msg)
             {
-                if(_window.WindowState == WindowState.Maximized)
-                {
-                    return IntPtr.Zero;
-                }
+                case WM_NCHITTEST:
+                    return HandleHitTest(lParam, ref handled);
 
-                int x = lParam.ToInt32() & 0xFFFF;
-                int y = lParam.ToInt32() >> 16;
-                var screenPoint = new Point(x, y);
-
-                var windowPoint = _window.PointFromScreen(screenPoint);
-
-                var result = HitTest(windowPoint);
-
-                if(result != HitTestValues.HTCLIENT)
-                {
+                case WM_GETMINMAXINFO:
+                    HandleGetMinMaxInfo(lParam);
                     handled = true;
-                    return new IntPtr((int)result);
-                }
+                    break;
             }
             return IntPtr.Zero;
+        }
+
+        private IntPtr HandleHitTest(IntPtr lParam, ref bool handled)
+        {
+            if(_window.WindowState == WindowState.Maximized)
+            {
+                return IntPtr.Zero;
+            }
+
+            int x = lParam.ToInt32() & 0xFFFF;
+            int y = lParam.ToInt32() >> 16;
+            var screenPoint = new Point(x, y);
+
+            var windowPoint = _window.PointFromScreen(screenPoint);
+
+            var result = HitTest(windowPoint);
+
+            if(result != HitTestValues.HTCLIENT)
+            {
+                handled = true;
+                return new IntPtr((int)result);
+            }
+
+            return IntPtr.Zero;
+        }
+
+        private void HandleGetMinMaxInfo(IntPtr lParam)
+        {
+            var mmi = (MINMAXINFO)Marshal.PtrToStructure(lParam, typeof(MINMAXINFO));
+
+            IntPtr hMonitor = MonitorFromWindow(_hwndSource.Handle, MONITOR_DEFAULTTONEAREST);
+
+            if(hMonitor != IntPtr.Zero)
+            {
+                MONITORINFO monitorInfo = new MONITORINFO();
+                monitorInfo.cbSize = Marshal.SizeOf(typeof(MONITORINFO));
+                GetMonitorInfo(hMonitor, ref monitorInfo);
+
+                RECT rcWorkArea = monitorInfo.rcWork;
+                RECT rcMonitorArea = monitorInfo.rcMonitor;
+
+                mmi.ptMaxPosition.X = Math.Abs(rcWorkArea.Left - rcMonitorArea.Left);
+                mmi.ptMaxPosition.Y = Math.Abs(rcWorkArea.Top - rcMonitorArea.Top);
+                mmi.ptMaxSize.X = Math.Abs(rcWorkArea.Right - rcWorkArea.Left);
+                mmi.ptMaxSize.Y = Math.Abs(rcWorkArea.Bottom - rcWorkArea.Top);
+            }
+
+            Marshal.StructureToPtr(mmi, lParam, true);
         }
 
         private HitTestValues HitTest(Point point)

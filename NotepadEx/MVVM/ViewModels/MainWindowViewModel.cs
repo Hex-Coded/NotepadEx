@@ -75,6 +75,7 @@ namespace NotepadEx.MVVM.ViewModels
 
             document = new Document();
             this.textEditor.TextArea.Caret.PositionChanged += Caret_PositionChanged;
+            this.textEditor.TextArea.TextEntered += TextArea_TextEntered;
 
             var sortedHighlightings = HighlightingManager.Instance.HighlightingDefinitions
                 .OrderBy(h => h.Name).ToList();
@@ -104,9 +105,33 @@ namespace NotepadEx.MVVM.ViewModels
             OnPropertyChanged(nameof(AvailableThemes));
         }
 
+        private void TextArea_TextEntered(object sender, TextCompositionEventArgs e)
+        {
+            // Ensure caret is visible when typing
+            EnsureCaretVisible();
+        }
+
         private void Caret_PositionChanged(object sender, EventArgs e)
         {
             UpdateStatusBar();
+            EnsureCaretVisible();
+        }
+
+        private void EnsureCaretVisible()
+        {
+            try
+            {
+                var textView = textEditor.TextArea.TextView;
+                var visualLine = textView.GetVisualLine(textEditor.TextArea.Caret.Line);
+                if(visualLine != null)
+                {
+                    textEditor.ScrollToLine(textEditor.TextArea.Caret.Line);
+                }
+            }
+            catch
+            {
+                // Ignore any errors during scroll
+            }
         }
 
         void InitializeCommands()
@@ -347,7 +372,7 @@ namespace NotepadEx.MVVM.ViewModels
             return true;
         }
 
-        private async Task SaveDocument()
+        public async Task SaveDocument()
         {
             if(string.IsNullOrEmpty(document.FilePath))
             {

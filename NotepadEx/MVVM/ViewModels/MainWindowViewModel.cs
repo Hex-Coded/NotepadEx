@@ -121,17 +121,72 @@ namespace NotepadEx.MVVM.ViewModels
         {
             try
             {
-                var textView = textEditor.TextArea.TextView;
-                var visualLine = textView.GetVisualLine(textEditor.TextArea.Caret.Line);
-                if(visualLine != null)
+                var caret = textEditor.TextArea.Caret;
+                var line = caret.Line;
+
+                // Find the ScrollViewer that contains the TextEditor
+                var scrollViewer = FindScrollViewer(textEditor);
+                if(scrollViewer == null) return;
+
+                var viewportHeight = scrollViewer.ViewportHeight;
+                var verticalOffset = scrollViewer.VerticalOffset;
+
+                // Calculate line heights
+                double lineHeight = textEditor.FontSize * textEditor.FontFamily.LineSpacing;
+                double bottomPadding = lineHeight * 3; // 3 lines of padding at bottom
+                double topPadding = lineHeight * 1.5; // 1.5 lines of padding at top
+
+                // Get approximate position of current line
+                double linePosition = (line - 1) * lineHeight;
+                double relativePosition = linePosition - verticalOffset;
+
+                // Check if we need to scroll
+                if(relativePosition > viewportHeight - bottomPadding)
                 {
-                    textEditor.ScrollToLine(textEditor.TextArea.Caret.Line);
+                    // Too close to bottom - scroll down
+                    double newOffset = linePosition - viewportHeight + bottomPadding;
+                    scrollViewer.ScrollToVerticalOffset(Math.Max(0, newOffset));
+                }
+                else if(relativePosition < topPadding)
+                {
+                    // Too close to top - scroll up
+                    double newOffset = linePosition - topPadding;
+                    scrollViewer.ScrollToVerticalOffset(Math.Max(0, newOffset));
                 }
             }
             catch
             {
-                // Ignore any errors during scroll
+                // Fallback to simple scroll
+                try
+                {
+                    textEditor.ScrollToLine(textEditor.TextArea.Caret.Line);
+                }
+                catch
+                {
+                    // Ignore any errors during scroll
+                }
             }
+        }
+
+        private System.Windows.Controls.ScrollViewer FindScrollViewer(DependencyObject element)
+        {
+            if(element == null) return null;
+
+            // Check if this element is a ScrollViewer
+            if(element is System.Windows.Controls.ScrollViewer scrollViewer)
+                return scrollViewer;
+
+            // Search children
+            int childCount = VisualTreeHelper.GetChildrenCount(element);
+            for(int i = 0; i < childCount; i++)
+            {
+                var child = VisualTreeHelper.GetChild(element, i);
+                var result = FindScrollViewer(child);
+                if(result != null)
+                    return result;
+            }
+
+            return null;
         }
 
         void InitializeCommands()

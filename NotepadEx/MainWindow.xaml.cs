@@ -80,10 +80,16 @@ namespace NotepadEx
 
             Closing += (s, e) =>
             {
+                // Check if user wants to save changes before closing
+                if(!viewModel.PromptToSaveChanges())
+                {
+                    e.Cancel = true; // Cancel the close if user clicks Cancel
+                    return;
+                }
+
                 viewModel.Cleanup();
                 _windowChrome?.Detach();
             };
-            Closed += (s, e) => viewModel.PromptToSaveChanges();
         }
 
         public void Dispose() => viewModel?.Cleanup();

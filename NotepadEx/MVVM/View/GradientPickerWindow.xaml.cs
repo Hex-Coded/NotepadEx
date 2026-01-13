@@ -14,13 +14,27 @@ public partial class GradientPickerWindow : Window
 {
     public Action OnSelectedColorChanged;
     public ObservableCollection<GradientStop> GradientStops { get; set; } = new();
-    public LinearGradientBrush GradientBrush => GradientPreview;
+    public LinearGradientBrush GradientBrush
+    {
+        get
+        {
+            var brush = new LinearGradientBrush();
+            brush.StartPoint = GradientPreview.StartPoint;
+            brush.EndPoint = GradientPreview.EndPoint;
+            foreach(var stop in GradientPreview.GradientStops)
+            {
+                brush.GradientStops.Add(new GradientStop(stop.Color, stop.Offset));
+            }
+            return brush;
+        }
+    }
     bool updatingFromAngle = false;
     bool updatingFromOffset = false;
     bool updatingFromScale = false;
 
     CustomTitleBarViewModel titleBarViewModel;
     private WindowChrome _windowChrome;
+    private System.Windows.Shapes.Rectangle previewRectangle;
 
     public CustomTitleBarViewModel TitleBarViewModel => titleBarViewModel;
 
@@ -44,6 +58,9 @@ public partial class GradientPickerWindow : Window
     {
         _windowChrome = new WindowChrome(this);
         _windowChrome.Enable();
+
+        // Find the preview rectangle
+        previewRectangle = this.FindName("GradientPreview") as System.Windows.Shapes.Rectangle;
     }
 
     private void GradientPickerWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -71,9 +88,12 @@ public partial class GradientPickerWindow : Window
     {
         if(GradientPreview == null) return;
 
-        GradientPreview.GradientStops.Clear();
+        // Create a new GradientStopCollection instead of modifying the frozen one
+        var newStops = new GradientStopCollection();
         foreach(var stop in GradientStops)
-            GradientPreview.GradientStops.Add(stop);
+            newStops.Add(new GradientStop(stop.Color, stop.Offset));
+
+        GradientPreview.GradientStops = newStops;
 
         if(StartXSlider != null && StartYSlider != null && EndXSlider != null && EndYSlider != null)
         {

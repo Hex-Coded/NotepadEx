@@ -14,3 +14,6 @@ it should be saving all settings like: last used window size, last theme, font s
 
 need to be able to do hold alt and move lines like visual studio
 need to be able to do hold alt and drag marquee like vs
+
+
+should only move when we type if we arent already on scnreeen
